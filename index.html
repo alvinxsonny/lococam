@@ -137,28 +137,35 @@
           <span id="rec-time">00:00</span>
         </div>
 
-        <!-- HUD Overlay -->
-        <div id="hud" class="hud" aria-label="Location HUD">
-          <div id="map-el" class="hud-map"></div>
+        <!-- Main HUD Container (Map + Info + Right-Center Shutter in 1 panel) -->
+        <div id="hud" class="hud" aria-label="Location HUD & Controls">
+          <!-- Top Right: LocoCam Notification Tag (No green dot) -->
+          <div class="hud-badge">
+            <span class="hud-badge-text">LocoCam</span>
+          </div>
+
+          <!-- Left: Map Container with subtle border -->
+          <div class="hud-map-container">
+            <div id="map-el" class="hud-map"></div>
+            <div class="hud-map-border" aria-hidden="true"></div>
+          </div>
+
+          <!-- Middle: Info Flow (clean unified typography) -->
           <div class="hud-info">
-            <div id="hud-addr" class="hud-addr acquiring">
-              Acquiring location…
-            </div>
-            <div id="hud-addr-full" class="hud-addr-full"></div>
+            <div id="hud-addr" class="hud-addr acquiring">Acquiring location…</div>
+            <div id="hud-addr-full" class="hud-addr-full">Locating precise address…</div>
             <div id="hud-coords" class="hud-coords">–</div>
-            <div id="hud-clock" class="hud-clock"></div>
+            <div id="hud-clock" class="hud-clock">–</div>
+          </div>
+
+          <!-- Right: Shutter Button (vertically centered in main container) -->
+          <div class="hud-shutter-dock">
+            <button id="btn-shutter" class="shutter-btn" aria-label="Capture">
+              <span class="shutter-ring" aria-hidden="true"></span>
+              <span class="shutter-dot" aria-hidden="true"></span>
+            </button>
           </div>
         </div>
-
-        <!-- Shutter -->
-        <footer class="shutter-bar">
-          <div class="shutter-spacer"></div>
-          <button id="btn-shutter" class="shutter-btn" aria-label="Capture">
-            <span class="shutter-ring" aria-hidden="true"></span>
-            <span class="shutter-dot" aria-hidden="true"></span>
-          </button>
-          <div class="shutter-spacer"></div>
-        </footer>
       </div>
 
       <!-- Preview Screen -->
