@@ -589,9 +589,11 @@ class LocoCam {
   }
 
   /* ─────────────────────────────────────────────
-     HUD BURN-IN  (High Quality, Top Padding, Generous Badge Padding)
+     HUD BURN-IN (Shared by Photo & Video)
   ───────────────────────────────────────────── */
-  async _burnHUD(ctx, W, H) {
+  _drawHUDDirect(ctx, W, H, cachedMapCanvas = null) {
+    if (!this.location) return;
+
     const isPortrait = H > W;
     const cardH   = isPortrait ? Math.max(110, Math.round(H * 0.125)) : Math.max(110, Math.round(H * 0.165));
     const innerPad = Math.round(cardH * 0.08);
@@ -662,9 +664,9 @@ class LocoCam {
     const mapY    = cardY + innerPad;
     const mapR    = Math.max(9, Math.round(cardR * 0.75));
 
-    try {
-      await this._drawMapTiles(ctx, this.location.lat, this.location.lng, mapX, mapY, mapW, mapH, 16, mapR);
-    } catch {
+    if (cachedMapCanvas) {
+      ctx.drawImage(cachedMapCanvas, mapX, mapY, mapW, mapH);
+    } else {
       ctx.save();
       ctx.fillStyle = '#20202a';
       ctx.beginPath();
@@ -745,6 +747,27 @@ class LocoCam {
     ctx.fillText(timeStr, textX, timeY);
 
     ctx.restore();
+  }
+
+  async _burnHUD(ctx, W, H) {
+    if (!this.location) return;
+
+    const isPortrait = H > W;
+    const cardH   = isPortrait ? Math.max(110, Math.round(H * 0.125)) : Math.max(110, Math.round(H * 0.165));
+    const innerPad = Math.round(cardH * 0.08);
+    const mapSize  = Math.round(cardH - innerPad * 2);
+    const cardR   = Math.max(12, Math.round(cardH * 0.1));
+    const mapR    = Math.max(9, Math.round(cardR * 0.75));
+
+    const mapCanvas = document.createElement('canvas');
+    mapCanvas.width = mapSize;
+    mapCanvas.height = mapSize;
+    const mapCtx = mapCanvas.getContext('2d');
+    try {
+      await this._drawMapTiles(mapCtx, this.location.lat, this.location.lng, 0, 0, mapSize, mapSize, 16, mapR);
+    } catch {}
+
+    this._drawHUDDirect(ctx, W, H, mapCanvas);
   }
 
   /**
@@ -849,7 +872,7 @@ class LocoCam {
   /* ─────────────────────────────────────────────
      VIDEO RECORDING
   ───────────────────────────────────────────── */
-  _startRecording() {
+  async _startRecording() {
     if (!this.stream) return;
 
     this.chunks      = [];
@@ -858,6 +881,60 @@ class LocoCam {
 
     this.el.camScreen.classList.add('recording');
     this.el.recBar.classList.remove('hidden');
+
+    const video = this.el.video;
+    const W = video.videoWidth || 1280;
+    const H = video.videoHeight || 720;
+
+    let streamToRecord = this.stream;
+
+    if (this.hudEnabled && this.location) {
+      // Pre-render map thumbnail for synchronous 30fps HUD rendering
+      const isPortrait = H > W;
+      const cardH   = isPortrait ? Math.max(110, Math.round(H * 0.125)) : Math.max(110, Math.round(H * 0.165));
+      const innerPad = Math.round(cardH * 0.08);
+      const mapSize  = Math.round(cardH - innerPad * 2);
+      const cardR   = Math.max(12, Math.round(cardH * 0.1));
+      const mapR    = Math.max(9, Math.round(cardR * 0.75));
+
+      const mapCanvas = document.createElement('canvas');
+      mapCanvas.width = mapSize;
+      mapCanvas.height = mapSize;
+      const mapCtx = mapCanvas.getContext('2d');
+      try {
+        await this._drawMapTiles(mapCtx, this.location.lat, this.location.lng, 0, 0, mapSize, mapSize, 16, mapR);
+        this._cachedMapCanvas = mapCanvas;
+      } catch {
+        this._cachedMapCanvas = null;
+      }
+
+      // Create video composite canvas
+      const recCanvas = document.createElement('canvas');
+      recCanvas.width = W;
+      recCanvas.height = H;
+      const recCtx = recCanvas.getContext('2d', { alpha: false });
+      recCtx.imageSmoothingEnabled = true;
+      recCtx.imageSmoothingQuality = 'high';
+
+      const renderFrame = () => {
+        if (!this.isRecording) return;
+        recCtx.drawImage(video, 0, 0, W, H);
+        if (this.hudEnabled && this.location) {
+          this._drawHUDDirect(recCtx, W, H, this._cachedMapCanvas);
+        }
+        this.recAnimId = requestAnimationFrame(renderFrame);
+      };
+      renderFrame();
+
+      const canvasStream = recCanvas.captureStream(30);
+
+      // Add audio track if present
+      const audioTrack = this.stream.getAudioTracks()[0];
+      if (audioTrack) {
+        canvasStream.addTrack(audioTrack);
+      }
+      streamToRecord = canvasStream;
+    }
 
     const mimeTypes = [
       'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
@@ -873,7 +950,7 @@ class LocoCam {
 
     const mimeType = mimeTypes.find(t => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) || '';
 
-    this.mediaRecorder = new MediaRecorder(this.stream, mimeType ? { mimeType } : {});
+    this.mediaRecorder = new MediaRecorder(streamToRecord, mimeType ? { mimeType } : {});
     this.mediaRecorder.ondataavailable = e => { if (e.data?.size > 0) this.chunks.push(e.data); };
     this.mediaRecorder.start(100);
 
@@ -891,6 +968,10 @@ class LocoCam {
 
       this.isRecording = false;
       clearInterval(this.recTimerID);
+      if (this.recAnimId) {
+        cancelAnimationFrame(this.recAnimId);
+        this.recAnimId = null;
+      }
       this.el.camScreen.classList.remove('recording');
       this.el.recBar.classList.add('hidden');
       this.el.recTime.textContent = '00:00';
