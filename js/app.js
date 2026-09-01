@@ -545,12 +545,12 @@ class LocoCam {
     if (this.mode === 'photo') {
       this._capturePhoto();
     } else if (this.isRecording) {
-      // Stop recording and auto-download
+      // Stop recording and auto-download as MP4
       this._stopRecording().then(blob => {
         if (!blob) return;
-        const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
-        const url = URL.createObjectURL(blob);
-        this._download(url, `LocoCam_${this._timestamp()}.${ext}`);
+        const mp4Blob = new Blob([blob], { type: 'video/mp4' });
+        const url = URL.createObjectURL(mp4Blob);
+        this._download(url, `LocoCam_${this._timestamp()}.mp4`);
         setTimeout(() => URL.revokeObjectURL(url), 5000);
       });
     } else {
@@ -859,13 +859,19 @@ class LocoCam {
     this.el.camScreen.classList.add('recording');
     this.el.recBar.classList.remove('hidden');
 
-    const mimeType = [
+    const mimeTypes = [
+      'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+      'video/mp4;codecs=avc1,mp4a.40.2',
       'video/mp4;codecs=h264,aac',
+      'video/mp4;codecs=h264',
+      'video/mp4',
+      'video/webm;codecs=h264',
       'video/webm;codecs=vp9,opus',
       'video/webm;codecs=vp8,opus',
       'video/webm',
-      'video/mp4',
-    ].find(t => MediaRecorder.isTypeSupported(t)) || '';
+    ];
+
+    const mimeType = mimeTypes.find(t => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) || '';
 
     this.mediaRecorder = new MediaRecorder(this.stream, mimeType ? { mimeType } : {});
     this.mediaRecorder.ondataavailable = e => { if (e.data?.size > 0) this.chunks.push(e.data); };
@@ -890,7 +896,7 @@ class LocoCam {
       this.el.recTime.textContent = '00:00';
 
       this.mediaRecorder.addEventListener('stop', () => {
-        const mime = this.mediaRecorder.mimeType || 'video/webm';
+        const mime = this.mediaRecorder.mimeType || 'video/mp4';
         resolve(new Blob(this.chunks, { type: mime }));
       }, { once: true });
 
@@ -928,9 +934,9 @@ class LocoCam {
     if (this.capturedType === 'photo') {
       this._download(this.capturedURL, `LocoCam_${this._timestamp()}.jpg`);
     } else {
-      const ext = this.capturedBlob.type.includes('mp4') ? 'mp4' : 'webm';
-      const url = URL.createObjectURL(this.capturedBlob);
-      this._download(url, `LocoCam_${this._timestamp()}.${ext}`);
+      const mp4Blob = new Blob([this.capturedBlob], { type: 'video/mp4' });
+      const url = URL.createObjectURL(mp4Blob);
+      this._download(url, `LocoCam_${this._timestamp()}.mp4`);
       setTimeout(() => URL.revokeObjectURL(url), 5000);
     }
     this._retake();
