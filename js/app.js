@@ -271,7 +271,7 @@ class LocoCam {
   async _enumerateCameras() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
       if (this.el.camList) {
-        this.el.camList.innerHTML = '<div class="cam-empty-msg">Camera list unavailable on this browser</div>';
+        this.el.camList.innerHTML = '<div class="cam-empty-msg">Camera list unavailable</div>';
       }
       return;
     }
@@ -280,82 +280,57 @@ class LocoCam {
       let devices = await navigator.mediaDevices.enumerateDevices();
       this.videoDevices = devices.filter(d => d.kind === 'videoinput');
 
-      // If no active stream and labels are missing, attempt to refresh labels
+      // If labels are missing and stream is active, re-query
       if (this.videoDevices.length > 0 && !this.videoDevices[0].label && this.stream) {
         devices = await navigator.mediaDevices.enumerateDevices();
         this.videoDevices = devices.filter(d => d.kind === 'videoinput');
       }
 
-      // Extract current active camera track details
       const activeTrack    = this.stream ? this.stream.getVideoTracks()[0] : null;
       const activeSettings = activeTrack && activeTrack.getSettings ? activeTrack.getSettings() : {};
       const activeId       = activeSettings.deviceId || this.selectedDeviceId || this.activeDeviceId;
       const activeLabel    = activeTrack ? activeTrack.label : '';
 
       if (this.el.camCount) {
-        this.el.camCount.textContent = `${this.videoDevices.length} ${this.videoDevices.length === 1 ? 'camera' : 'cameras'}`;
+        this.el.camCount.textContent = `${this.videoDevices.length} found`;
       }
 
       if (this.el.camList) {
         this.el.camList.innerHTML = '';
 
         if (this.videoDevices.length === 0) {
-          this.el.camList.innerHTML = '<div class="cam-empty-msg">No cameras detected on this device</div>';
+          this.el.camList.innerHTML = '<div class="cam-empty-msg">No cameras detected</div>';
           return;
         }
 
-        // ── 1. Prominent Active Camera Card ──
-        const activeDeviceObj = this.videoDevices.find(d => d.deviceId === activeId);
-        const currentName = activeLabel || (activeDeviceObj ? activeDeviceObj.label : '') || (this.videoDevices[0]?.label) || 'Built-in / Default Camera';
-
-        const activeCard = document.createElement('div');
-        activeCard.className = 'cam-current-card';
-        activeCard.innerHTML = `
-          <span class="cam-current-tag">ACTIVE CAMERA</span>
-          <div class="cam-current-body">
-            <span class="cam-pulse-dot" aria-hidden="true"></span>
-            <span class="cam-current-title" title="${currentName}">${currentName}</span>
-          </div>
-        `;
-        this.el.camList.appendChild(activeCard);
-
-        // ── 2. Available Inputs Header ──
-        const sectionLabel = document.createElement('div');
-        sectionLabel.className = 'cam-section-label';
-        sectionLabel.textContent = 'Switch Input Device:';
-        this.el.camList.appendChild(sectionLabel);
-
-        // ── 3. List All Connected Cameras ──
         this.videoDevices.forEach((device, index) => {
           const isMatch = (activeId && device.deviceId === activeId) || (!activeId && index === 0) || (activeLabel && device.label === activeLabel);
 
-          // Categorize camera (Built-in, USB Webcam, Front/Back)
           let rawName = device.label || `Camera ${index + 1}`;
           let subType = 'Connected Camera';
           const lower = rawName.toLowerCase();
           if (lower.includes('facetime') || lower.includes('built-in') || lower.includes('isight') || lower.includes('integrated') || lower.includes('internal')) {
-            subType = '💻 Built-in Laptop Camera';
+            subType = 'Built-in Laptop Camera';
           } else if (lower.includes('usb') || lower.includes('webcam') || lower.includes('external') || lower.includes('c920') || lower.includes('c922') || lower.includes('brio') || lower.includes('droidcam') || lower.includes('obs')) {
-            subType = '🔌 External USB / Virtual Camera';
-          } else if (lower.includes('back') || lower.includes('rear') || lower.includes('environment') || lower.includes('0, facing back')) {
-            subType = '📷 Rear Camera';
-          } else if (lower.includes('front') || lower.includes('user') || lower.includes('selfie') || lower.includes('0, facing front')) {
-            subType = '🤳 Front Camera';
-          } else {
-            subType = `Video Input #${index + 1}`;
+            subType = 'External USB Camera';
+          } else if (lower.includes('back') || lower.includes('rear') || lower.includes('environment')) {
+            subType = 'Rear Camera';
+          } else if (lower.includes('front') || lower.includes('user') || lower.includes('selfie')) {
+            subType = 'Front Camera';
           }
 
           const btn = document.createElement('button');
           btn.type = 'button';
-          btn.className = `cam-item ${isMatch ? 'active' : ''}`;
+          btn.className = `cam-row-item ${isMatch ? 'active' : ''}`;
           btn.innerHTML = `
-            <div class="cam-item-content">
-              <div class="cam-item-name" title="${rawName}">${rawName}</div>
-              <div class="cam-item-type">${subType}</div>
+            <div class="cam-row-left">
+              <span class="cam-dot"></span>
+              <div class="cam-row-texts">
+                <span class="cam-row-name" title="${rawName}">${rawName}</span>
+                <span class="cam-row-sub">${subType}</span>
+              </div>
             </div>
-            <div class="cam-item-status">
-              ${isMatch ? '<span class="cam-item-badge">In Use</span>' : '<span class="cam-item-select-hint">Switch</span>'}
-            </div>
+            ${isMatch ? '<span class="cam-row-check">✓</span>' : ''}
           `;
 
           btn.addEventListener('click', async (e) => {
@@ -386,7 +361,7 @@ class LocoCam {
     } catch (err) {
       console.error('Error enumerating cameras:', err);
       if (this.el.camList) {
-        this.el.camList.innerHTML = '<div class="cam-empty-msg">Could not query camera devices. Please check permissions.</div>';
+        this.el.camList.innerHTML = '<div class="cam-empty-msg">Could not query camera devices</div>';
       }
     }
   }

@@ -89,9 +89,9 @@
               </svg>
             </button>
 
-            <!-- Camera Input Selector -->
+            <!-- Camera Input Select Button & Popover -->
             <div class="cam-select-wrapper">
-              <button id="btn-cam-select" class="icon-btn" aria-label="Select camera input" aria-haspopup="true">
+              <button id="btn-cam-select" class="icon-btn" aria-label="Select camera input" tabindex="0">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M23 7l-7 5 7 5V7z" />
                   <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
@@ -99,10 +99,16 @@
               </button>
               <div id="cam-menu" class="cam-menu" role="menu" aria-label="Available cameras">
                 <div class="cam-menu-header">
-                  <span class="cam-menu-title">Camera Inputs</span>
-                  <span id="cam-count" class="cam-count-badge">0 found</span>
+                  <div class="cam-app-badge">
+                    <span class="cam-menu-title">Camera Inputs</span>
+                    <span id="cam-count" class="cam-version-pill">0 found</span>
+                  </div>
                 </div>
-                <div id="cam-list" class="cam-list">
+                <div class="cam-subtitle-line">
+                  Select input device
+                </div>
+                <div class="cam-divider"></div>
+                <div id="cam-list" class="cam-details-list">
                   <!-- Injected dynamically -->
                 </div>
               </div>
