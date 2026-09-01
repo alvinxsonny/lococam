@@ -269,55 +269,125 @@ class LocoCam {
   }
 
   async _enumerateCameras() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+      if (this.el.camList) {
+        this.el.camList.innerHTML = '<div class="cam-empty-msg">Camera list unavailable on this browser</div>';
+      }
+      return;
+    }
 
     try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
+      let devices = await navigator.mediaDevices.enumerateDevices();
       this.videoDevices = devices.filter(d => d.kind === 'videoinput');
 
+      // If no active stream and labels are missing, attempt to refresh labels
+      if (this.videoDevices.length > 0 && !this.videoDevices[0].label && this.stream) {
+        devices = await navigator.mediaDevices.enumerateDevices();
+        this.videoDevices = devices.filter(d => d.kind === 'videoinput');
+      }
+
+      // Extract current active camera track details
+      const activeTrack    = this.stream ? this.stream.getVideoTracks()[0] : null;
+      const activeSettings = activeTrack && activeTrack.getSettings ? activeTrack.getSettings() : {};
+      const activeId       = activeSettings.deviceId || this.selectedDeviceId || this.activeDeviceId;
+      const activeLabel    = activeTrack ? activeTrack.label : '';
+
       if (this.el.camCount) {
-        this.el.camCount.textContent = `${this.videoDevices.length} ${this.videoDevices.length === 1 ? 'found' : 'found'}`;
+        this.el.camCount.textContent = `${this.videoDevices.length} ${this.videoDevices.length === 1 ? 'camera' : 'cameras'}`;
       }
 
       if (this.el.camList) {
         this.el.camList.innerHTML = '';
 
         if (this.videoDevices.length === 0) {
-          this.el.camList.innerHTML = '<div style="padding:12px; font-size:12px; color:var(--text-3); text-align:center;">No cameras detected</div>';
+          this.el.camList.innerHTML = '<div class="cam-empty-msg">No cameras detected on this device</div>';
           return;
         }
 
+        // ── 1. Prominent Active Camera Card ──
+        const activeDeviceObj = this.videoDevices.find(d => d.deviceId === activeId);
+        const currentName = activeLabel || (activeDeviceObj ? activeDeviceObj.label : '') || (this.videoDevices[0]?.label) || 'Built-in / Default Camera';
+
+        const activeCard = document.createElement('div');
+        activeCard.className = 'cam-current-card';
+        activeCard.innerHTML = `
+          <span class="cam-current-tag">ACTIVE CAMERA</span>
+          <div class="cam-current-body">
+            <span class="cam-pulse-dot" aria-hidden="true"></span>
+            <span class="cam-current-title" title="${currentName}">${currentName}</span>
+          </div>
+        `;
+        this.el.camList.appendChild(activeCard);
+
+        // ── 2. Available Inputs Header ──
+        const sectionLabel = document.createElement('div');
+        sectionLabel.className = 'cam-section-label';
+        sectionLabel.textContent = 'Switch Input Device:';
+        this.el.camList.appendChild(sectionLabel);
+
+        // ── 3. List All Connected Cameras ──
         this.videoDevices.forEach((device, index) => {
-          const isActive = this.activeDeviceId === device.deviceId || (this.selectedDeviceId === device.deviceId) || (!this.selectedDeviceId && index === 0 && !this.activeDeviceId);
-          const name = device.label || `Camera ${index + 1} (${device.deviceId ? device.deviceId.slice(0, 5) : 'Device'})`;
+          const isMatch = (activeId && device.deviceId === activeId) || (!activeId && index === 0) || (activeLabel && device.label === activeLabel);
+
+          // Categorize camera (Built-in, USB Webcam, Front/Back)
+          let rawName = device.label || `Camera ${index + 1}`;
+          let subType = 'Connected Camera';
+          const lower = rawName.toLowerCase();
+          if (lower.includes('facetime') || lower.includes('built-in') || lower.includes('isight') || lower.includes('integrated') || lower.includes('internal')) {
+            subType = '💻 Built-in Laptop Camera';
+          } else if (lower.includes('usb') || lower.includes('webcam') || lower.includes('external') || lower.includes('c920') || lower.includes('c922') || lower.includes('brio') || lower.includes('droidcam') || lower.includes('obs')) {
+            subType = '🔌 External USB / Virtual Camera';
+          } else if (lower.includes('back') || lower.includes('rear') || lower.includes('environment') || lower.includes('0, facing back')) {
+            subType = '📷 Rear Camera';
+          } else if (lower.includes('front') || lower.includes('user') || lower.includes('selfie') || lower.includes('0, facing front')) {
+            subType = '🤳 Front Camera';
+          } else {
+            subType = `Video Input #${index + 1}`;
+          }
 
           const btn = document.createElement('button');
-          btn.className = `cam-item ${isActive ? 'active' : ''}`;
+          btn.type = 'button';
+          btn.className = `cam-item ${isMatch ? 'active' : ''}`;
           btn.innerHTML = `
-            <div class="cam-item-name" title="${name}">${name}</div>
-            ${isActive ? '<span class="cam-item-check">✓</span>' : ''}
+            <div class="cam-item-content">
+              <div class="cam-item-name" title="${rawName}">${rawName}</div>
+              <div class="cam-item-type">${subType}</div>
+            </div>
+            <div class="cam-item-status">
+              ${isMatch ? '<span class="cam-item-badge">In Use</span>' : '<span class="cam-item-select-hint">Switch</span>'}
+            </div>
           `;
 
-          btn.addEventListener('click', async () => {
-            if (this.selectedDeviceId === device.deviceId) {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (isMatch) {
               this.el.camMenu.classList.remove('show');
               return;
             }
+
             this.selectedDeviceId = device.deviceId;
+            this.activeDeviceId   = device.deviceId;
             this.el.camMenu.classList.remove('show');
 
             this.el.video.style.opacity = '0';
             await this._sleep(150);
-            await this._startCamera().catch(() => {});
-            this._enumerateCameras();
+            try {
+              await this._startCamera();
+            } catch (err) {
+              console.error('Failed to switch camera device:', err);
+            }
+            await this._enumerateCameras();
             this.el.video.style.opacity = '1';
           });
 
           this.el.camList.appendChild(btn);
         });
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error('Error enumerating cameras:', err);
+      if (this.el.camList) {
+        this.el.camList.innerHTML = '<div class="cam-empty-msg">Could not query camera devices. Please check permissions.</div>';
+      }
     }
   }
 
