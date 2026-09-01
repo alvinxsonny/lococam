@@ -69,6 +69,10 @@ class LocoCam {
       focusRing  : q('focus-ring'),
 
       btnFlip      : q('btn-flip'),
+      btnCamSelect : q('btn-cam-select'),
+      camMenu      : q('cam-menu'),
+      camList      : q('cam-list'),
+      camCount     : q('cam-count'),
       btnModePhoto : q('btn-mode-photo'),
       btnModeVideo : q('btn-mode-video'),
       btnHud       : q('btn-hud'),
@@ -95,6 +99,10 @@ class LocoCam {
       btnSave    : q('btn-save'),
     };
 
+    this.selectedDeviceId = null;
+    this.activeDeviceId   = null;
+    this.videoDevices     = [];
+
     this._bindEvents();
 
     // Live clock in HUD
@@ -117,6 +125,23 @@ class LocoCam {
     el.btnSave.addEventListener('click',       () => this._save());
     el.video.addEventListener('click',         e  => this._onTap(e));
 
+    // Camera Input Menu Toggle
+    if (el.btnCamSelect && el.camMenu) {
+      el.btnCamSelect.addEventListener('click', (e) => {
+        e.stopPropagation();
+        el.camMenu.classList.toggle('show');
+        if (el.camMenu.classList.contains('show')) {
+          this._enumerateCameras();
+        }
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!el.btnCamSelect.contains(e.target) && !el.camMenu.contains(e.target)) {
+          el.camMenu.classList.remove('show');
+        }
+      });
+    }
+
     // Info button toggle
     if (el.btnInfo && el.infoPopover) {
       el.btnInfo.addEventListener('click', (e) => {
@@ -128,6 +153,11 @@ class LocoCam {
           el.infoPopover.classList.remove('show');
         }
       });
+    }
+
+    // Listen for device changes (plugged/unplugged cameras)
+    if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+      navigator.mediaDevices.addEventListener('devicechange', () => this._enumerateCameras());
     }
   }
 
@@ -158,6 +188,7 @@ class LocoCam {
       this._showScreen('cam');
       this._initMap();
       this._startGeo();
+      this._enumerateCameras();
     } catch (err) {
       this._showScreen('perm');
       if (err.name === 'NotAllowedError') {
@@ -190,20 +221,27 @@ class LocoCam {
       this.stream = null;
     }
 
+    const videoConstraint = this.selectedDeviceId
+      ? { deviceId: { exact: this.selectedDeviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+      : { facingMode: { ideal: this.facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } };
+
     const constraints = {
-      video: {
-        facingMode: { ideal: this.facingMode },
-        width:  { ideal: 1920 },
-        height: { ideal: 1080 },
-      },
+      video: videoConstraint,
       audio: this.mode === 'video',
     };
 
     this.stream = await navigator.mediaDevices.getUserMedia(constraints);
     this.el.video.srcObject = this.stream;
 
-    // Mirror front camera (selfie view)
-    this.el.video.style.transform = this.facingMode === 'user' ? 'scaleX(-1)' : '';
+    const activeTrack = this.stream.getVideoTracks()[0];
+    if (activeTrack) {
+      const settings = activeTrack.getSettings ? activeTrack.getSettings() : {};
+      this.activeDeviceId = settings.deviceId || this.selectedDeviceId;
+
+      // Check facing mode for mirror effect
+      const facing = settings.facingMode || (activeTrack.label.toLowerCase().includes('front') || activeTrack.label.toLowerCase().includes('user') ? 'user' : this.facingMode);
+      this.el.video.style.transform = facing === 'user' ? 'scaleX(-1)' : '';
+    }
 
     return new Promise(resolve => {
       this.el.video.onloadedmetadata = () => resolve();
@@ -211,6 +249,7 @@ class LocoCam {
   }
 
   async _flipCamera() {
+    this.selectedDeviceId = null; // reset specific device selection when flipping
     this.facingMode = this.facingMode === 'environment' ? 'user' : 'environment';
 
     // Fade out → switch → fade in
@@ -219,6 +258,7 @@ class LocoCam {
 
     try {
       await this._startCamera();
+      this._enumerateCameras();
     } catch {
       // revert if the facing mode is not supported
       this.facingMode = this.facingMode === 'environment' ? 'user' : 'environment';
@@ -226,6 +266,59 @@ class LocoCam {
     }
 
     this.el.video.style.opacity = '1';
+  }
+
+  async _enumerateCameras() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      this.videoDevices = devices.filter(d => d.kind === 'videoinput');
+
+      if (this.el.camCount) {
+        this.el.camCount.textContent = `${this.videoDevices.length} ${this.videoDevices.length === 1 ? 'found' : 'found'}`;
+      }
+
+      if (this.el.camList) {
+        this.el.camList.innerHTML = '';
+
+        if (this.videoDevices.length === 0) {
+          this.el.camList.innerHTML = '<div style="padding:12px; font-size:12px; color:var(--text-3); text-align:center;">No cameras detected</div>';
+          return;
+        }
+
+        this.videoDevices.forEach((device, index) => {
+          const isActive = this.activeDeviceId === device.deviceId || (this.selectedDeviceId === device.deviceId) || (!this.selectedDeviceId && index === 0 && !this.activeDeviceId);
+          const name = device.label || `Camera ${index + 1} (${device.deviceId ? device.deviceId.slice(0, 5) : 'Device'})`;
+
+          const btn = document.createElement('button');
+          btn.className = `cam-item ${isActive ? 'active' : ''}`;
+          btn.innerHTML = `
+            <div class="cam-item-name" title="${name}">${name}</div>
+            ${isActive ? '<span class="cam-item-check">✓</span>' : ''}
+          `;
+
+          btn.addEventListener('click', async () => {
+            if (this.selectedDeviceId === device.deviceId) {
+              this.el.camMenu.classList.remove('show');
+              return;
+            }
+            this.selectedDeviceId = device.deviceId;
+            this.el.camMenu.classList.remove('show');
+
+            this.el.video.style.opacity = '0';
+            await this._sleep(150);
+            await this._startCamera().catch(() => {});
+            this._enumerateCameras();
+            this.el.video.style.opacity = '1';
+          });
+
+          this.el.camList.appendChild(btn);
+        });
+      }
+    } catch {
+      // ignore
+    }
   }
 
   /* ─────────────────────────────────────────────

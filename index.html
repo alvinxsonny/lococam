@@ -72,21 +72,42 @@
 
         <!-- Top Bar -->
         <header class="top-bar">
-          <button id="btn-flip" class="icon-btn" aria-label="Flip camera">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M1 4v6h6M23 20v-6h-6" />
-              <path
-                d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"
-              />
-            </svg>
-          </button>
+          <div class="top-left-controls">
+            <button id="btn-flip" class="icon-btn" aria-label="Flip camera">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M1 4v6h6M23 20v-6h-6" />
+                <path
+                  d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"
+                />
+              </svg>
+            </button>
+
+            <!-- Camera Input Selector -->
+            <div class="cam-select-wrapper">
+              <button id="btn-cam-select" class="icon-btn" aria-label="Select camera input" aria-haspopup="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M23 7l-7 5 7 5V7z" />
+                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                </svg>
+              </button>
+              <div id="cam-menu" class="cam-menu" role="menu" aria-label="Available cameras">
+                <div class="cam-menu-header">
+                  <span class="cam-menu-title">Camera Inputs</span>
+                  <span id="cam-count" class="cam-count-badge">0 found</span>
+                </div>
+                <div id="cam-list" class="cam-list">
+                  <!-- Injected dynamically -->
+                </div>
+              </div>
+            </div>
+          </div>
 
           <div class="mode-pill" role="group" aria-label="Capture mode">
             <button
