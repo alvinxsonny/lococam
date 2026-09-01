@@ -198,182 +198,6 @@ button {
   background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
 }
 
-/* ── Top left controls (Flip + Camera input selector) ── */
-.top-left-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* ── Camera Select Menu (Matches info-popover style exactly) ── */
-.cam-select-wrapper {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-}
-
-.cam-menu {
-  position: absolute;
-  top: calc(100% + 12px);
-  left: 0;
-  width: 255px;
-  background: rgba(12, 12, 26, 0.94);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 18px;
-  padding: 16px 18px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 20px rgba(184, 255, 87, 0.12);
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-8px) scale(0.95);
-  transform-origin: top left;
-  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.22s ease;
-  z-index: 100;
-  pointer-events: none;
-}
-
-/* Open on hover, focus, or toggle click */
-.cam-select-wrapper:hover .cam-menu,
-.cam-select-wrapper:focus-within .cam-menu,
-.cam-menu.show {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0) scale(1);
-  pointer-events: auto;
-}
-
-.cam-menu-header {
-  margin-bottom: 6px;
-}
-
-.cam-app-badge {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.cam-menu-title {
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.2px;
-  color: #ffffff;
-}
-
-.cam-version-pill {
-  font-size: 10px;
-  font-weight: 700;
-  font-family: 'JetBrains Mono', monospace;
-  background: rgba(184, 255, 87, 0.18);
-  color: var(--accent);
-  border: 1px solid rgba(184, 255, 87, 0.4);
-  padding: 1px 7px;
-  border-radius: 9999px;
-  letter-spacing: 0.3px;
-}
-
-.cam-subtitle-line {
-  font-size: 12.5px;
-  color: var(--text-2);
-  margin-bottom: 12px;
-}
-
-.cam-divider {
-  height: 1px;
-  background: rgba(255, 255, 255, 0.09);
-  margin-bottom: 10px;
-}
-
-.cam-details-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-height: 240px;
-  overflow-y: auto;
-}
-
-.cam-row-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  width: 100%;
-  padding: 8px 10px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  text-align: left;
-}
-
-.cam-row-item:hover {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(255, 255, 255, 0.12);
-}
-
-.cam-row-item.active {
-  background: rgba(184, 255, 87, 0.1);
-  border-color: rgba(184, 255, 87, 0.35);
-}
-
-.cam-row-left {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  overflow: hidden;
-}
-
-.cam-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.25);
-  flex-shrink: 0;
-  transition: all 0.2s ease;
-}
-
-.cam-row-item.active .cam-dot {
-  background: var(--accent);
-  box-shadow: 0 0 8px var(--accent);
-}
-
-.cam-row-texts {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  overflow: hidden;
-}
-
-.cam-row-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: #ffffff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 160px;
-}
-
-.cam-row-sub {
-  font-size: 10.5px;
-  color: rgba(255, 255, 255, 0.55);
-}
-
-.cam-row-check {
-  color: var(--accent);
-  font-weight: 700;
-  font-size: 13px;
-  flex-shrink: 0;
-}
-
-.cam-empty-msg {
-  padding: 16px 8px;
-  font-size: 12px;
-  color: var(--text-3);
-  text-align: center;
-}
-
 /* ── Top actions (HUD toggle + Info button) ── */
 .top-actions {
   display: flex;
@@ -399,115 +223,7 @@ button {
 .icon-btn:active { transform: scale(0.88); }
 .icon-btn.dim   { opacity: 0.32; }
 
-/* ── Info Button & Popover ── */
-.info-tooltip-wrapper {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-}
-
-.info-popover {
-  position: absolute;
-  top: calc(100% + 12px);
-  right: 0;
-  width: 255px;
-  background: rgba(12, 12, 26, 0.94);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 18px;
-  padding: 16px 18px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 20px rgba(184, 255, 87, 0.12);
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-8px) scale(0.95);
-  transform-origin: top right;
-  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.22s ease;
-  z-index: 100;
-  pointer-events: none;
-}
-
-/* Open on hover or focus */
-.info-tooltip-wrapper:hover .info-popover,
-.info-tooltip-wrapper:focus-within .info-popover,
-.info-popover.show {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0) scale(1);
-  pointer-events: auto;
-}
-
-.info-popover-header {
-  margin-bottom: 6px;
-}
-
-.info-app-badge {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.info-app-title {
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.2px;
-  color: #ffffff;
-}
-
-.info-version-pill {
-  font-size: 10px;
-  font-weight: 700;
-  font-family: 'JetBrains Mono', monospace;
-  background: rgba(184, 255, 87, 0.18);
-  color: var(--accent);
-  border: 1px solid rgba(184, 255, 87, 0.4);
-  padding: 1px 7px;
-  border-radius: 9999px;
-  letter-spacing: 0.3px;
-}
-
-.info-author-line {
-  font-size: 12.5px;
-  color: var(--text-2);
-  margin-bottom: 12px;
-}
-
-.info-author-line strong {
-  color: #ffffff;
-  font-weight: 600;
-}
-
-.info-divider {
-  height: 1px;
-  background: rgba(255, 255, 255, 0.09);
-  margin-bottom: 12px;
-}
-
-.info-details-list {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.info-detail-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.68);
-  line-height: 1.3;
-}
-
-.info-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 6px var(--accent);
-  flex-shrink: 0;
-}
-
-/* ── Mode pill ── */
+/* ── Mode pill (Photo / Video Switcher) ── */
 .mode-pill {
   display: flex;
   background: var(--glass);
@@ -533,6 +249,208 @@ button {
 .mode-tab.active {
   background: var(--text-1);
   color: var(--bg);
+}
+
+/* ══════════════════════════════════════════════
+   OPAQUE FROSTED GLASS WINDOW POPOVERS
+   (Matching Image/Video Pill Slider Style)
+══════════════════════════════════════════════ */
+.cam-select-wrapper,
+.info-tooltip-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.glass-window {
+  position: absolute;
+  top: calc(100% + 10px);
+  width: 250px;
+  background: rgba(14, 14, 24, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  padding: 14px 16px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65), 0 0 1px rgba(255, 255, 255, 0.2);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px) scale(0.96);
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s ease;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.cam-menu {
+  left: 0;
+  transform-origin: top left;
+}
+
+.info-popover {
+  right: 0;
+  transform-origin: top right;
+}
+
+/* Open on hover, focus-within, or .show */
+.cam-select-wrapper:hover .cam-menu,
+.cam-select-wrapper:focus-within .cam-menu,
+.cam-menu.show,
+.info-tooltip-wrapper:hover .info-popover,
+.info-tooltip-wrapper:focus-within .info-popover,
+.info-popover.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.glass-window-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.glass-window-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.2px;
+}
+
+.glass-pill-badge {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 1.5px 7px;
+  border-radius: 9999px;
+  letter-spacing: 0.2px;
+}
+
+.glass-author-line {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 10px;
+}
+
+.glass-author-line strong {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.glass-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin-bottom: 10px;
+}
+
+/* ── Info Features List ── */
+.glass-feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.glass-feature-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.68);
+  line-height: 1.3;
+}
+
+.glass-bullet {
+  color: var(--accent);
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* ── Camera Pill Rows (Matching mode-pill tab slider aesthetic) ── */
+.glass-cam-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.glass-cam-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.glass-cam-item:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Active Camera: Solid opaque white pill (like mode-tab.active) */
+.glass-cam-item.active {
+  background: #ffffff;
+  color: #07070f;
+  border-color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.glass-cam-item.active .glass-cam-name {
+  color: #07070f;
+}
+
+.glass-cam-item.active .glass-cam-sub {
+  color: rgba(7, 7, 15, 0.65);
+}
+
+.glass-cam-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+}
+
+.glass-cam-name {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 175px;
+}
+
+.glass-cam-sub {
+  font-size: 9.5px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.glass-cam-check {
+  font-size: 11px;
+  font-weight: 700;
+  color: #07070f;
+  flex-shrink: 0;
+}
+
+.glass-empty-msg {
+  padding: 12px 8px;
+  font-size: 11.5px;
+  color: var(--text-3);
+  text-align: center;
 }
 
 /* ══════════════════════════════════════════════

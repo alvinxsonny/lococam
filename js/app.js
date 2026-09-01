@@ -299,7 +299,7 @@ class LocoCam {
         this.el.camList.innerHTML = '';
 
         if (this.videoDevices.length === 0) {
-          this.el.camList.innerHTML = '<div class="cam-empty-msg">No cameras detected</div>';
+          this.el.camList.innerHTML = '<div class="glass-empty-msg">No cameras detected</div>';
           return;
         }
 
@@ -307,12 +307,12 @@ class LocoCam {
           const isMatch = (activeId && device.deviceId === activeId) || (!activeId && index === 0) || (activeLabel && device.label === activeLabel);
 
           let rawName = device.label || `Camera ${index + 1}`;
-          let subType = 'Connected Camera';
+          let subType = 'Camera Input';
           const lower = rawName.toLowerCase();
           if (lower.includes('facetime') || lower.includes('built-in') || lower.includes('isight') || lower.includes('integrated') || lower.includes('internal')) {
-            subType = 'Built-in Laptop Camera';
+            subType = 'Built-in';
           } else if (lower.includes('usb') || lower.includes('webcam') || lower.includes('external') || lower.includes('c920') || lower.includes('c922') || lower.includes('brio') || lower.includes('droidcam') || lower.includes('obs')) {
-            subType = 'External USB Camera';
+            subType = 'USB Camera';
           } else if (lower.includes('back') || lower.includes('rear') || lower.includes('environment')) {
             subType = 'Rear Camera';
           } else if (lower.includes('front') || lower.includes('user') || lower.includes('selfie')) {
@@ -321,16 +321,13 @@ class LocoCam {
 
           const btn = document.createElement('button');
           btn.type = 'button';
-          btn.className = `cam-row-item ${isMatch ? 'active' : ''}`;
+          btn.className = `glass-cam-item ${isMatch ? 'active' : ''}`;
           btn.innerHTML = `
-            <div class="cam-row-left">
-              <span class="cam-dot"></span>
-              <div class="cam-row-texts">
-                <span class="cam-row-name" title="${rawName}">${rawName}</span>
-                <span class="cam-row-sub">${subType}</span>
-              </div>
+            <div class="glass-cam-info">
+              <span class="glass-cam-name" title="${rawName}">${rawName}</span>
+              <span class="glass-cam-sub">${subType}</span>
             </div>
-            ${isMatch ? '<span class="cam-row-check">✓</span>' : ''}
+            ${isMatch ? '<span class="glass-cam-check">✓</span>' : ''}
           `;
 
           btn.addEventListener('click', async (e) => {
@@ -361,7 +358,7 @@ class LocoCam {
     } catch (err) {
       console.error('Error enumerating cameras:', err);
       if (this.el.camList) {
-        this.el.camList.innerHTML = '<div class="cam-empty-msg">Could not query camera devices</div>';
+        this.el.camList.innerHTML = '<div class="glass-empty-msg">Could not query camera devices</div>';
       }
     }
   }
