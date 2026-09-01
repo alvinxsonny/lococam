@@ -198,6 +198,13 @@ button {
   background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
 }
 
+/* ── Top actions (HUD toggle + Info button) ── */
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* ── Icon buttons ── */
 .icon-btn {
   width: 42px; height: 42px;
@@ -209,12 +216,120 @@ button {
   display: flex; align-items: center; justify-content: center;
   color: var(--text-1);
   flex-shrink: 0;
-  transition: background 0.15s ease, transform 0.15s ease, opacity 0.2s ease;
+  transition: background 0.15s ease, transform 0.15s ease, opacity 0.2s ease, border-color 0.2s ease;
 }
 .icon-btn svg   { width: 18px; height: 18px; }
-.icon-btn:hover { background: rgba(255,255,255,0.14); }
+.icon-btn:hover { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.22); }
 .icon-btn:active { transform: scale(0.88); }
 .icon-btn.dim   { opacity: 0.32; }
+
+/* ── Info Button & Popover ── */
+.info-tooltip-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.info-popover {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: 255px;
+  background: rgba(12, 12, 26, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 18px;
+  padding: 16px 18px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 20px rgba(184, 255, 87, 0.12);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px) scale(0.95);
+  transform-origin: top right;
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.22s ease;
+  z-index: 100;
+  pointer-events: none;
+}
+
+/* Open on hover or focus */
+.info-tooltip-wrapper:hover .info-popover,
+.info-tooltip-wrapper:focus-within .info-popover,
+.info-popover.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.info-popover-header {
+  margin-bottom: 6px;
+}
+
+.info-app-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.info-app-title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: #ffffff;
+}
+
+.info-version-pill {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  background: rgba(184, 255, 87, 0.18);
+  color: var(--accent);
+  border: 1px solid rgba(184, 255, 87, 0.4);
+  padding: 1px 7px;
+  border-radius: 9999px;
+  letter-spacing: 0.3px;
+}
+
+.info-author-line {
+  font-size: 12.5px;
+  color: var(--text-2);
+  margin-bottom: 12px;
+}
+
+.info-author-line strong {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.info-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.09);
+  margin-bottom: 12px;
+}
+
+.info-details-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.info-detail-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.68);
+  line-height: 1.3;
+}
+
+.info-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+  flex-shrink: 0;
+}
 
 /* ── Mode pill ── */
 .mode-pill {
@@ -305,7 +420,7 @@ button {
   pointer-events: none;
 }
 
-/* ── Notification Tag on Top-Center (No green dot) ── */
+/* ── Notification Tag in Top-Center of Container ── */
 .hud-badge {
   position: absolute;
   top: -10px;
@@ -332,11 +447,12 @@ button {
   line-height: 1.1;
 }
 
-/* ── Map Container with Subtle Border ── */
+/* ── Map Container with Exact 1:1 Square & Subtle Border ── */
 .hud-map-container {
-  width: 106px;
-  min-width: 106px;
-  height: 106px;
+  width: 104px;
+  min-width: 104px;
+  height: 104px;
+  aspect-ratio: 1 / 1;
   border-radius: 14px;
   overflow: hidden;
   position: relative;

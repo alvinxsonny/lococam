@@ -86,6 +86,8 @@ class LocoCam {
       hudClock : q('hud-clock'),
 
       shutterBtn : q('btn-shutter'),
+      btnInfo    : q('btn-info'),
+      infoPopover: q('info-popover'),
 
       prevImg    : q('prev-img'),
       prevVid    : q('prev-vid'),
@@ -114,6 +116,19 @@ class LocoCam {
     el.btnRetake.addEventListener('click',     () => this._retake());
     el.btnSave.addEventListener('click',       () => this._save());
     el.video.addEventListener('click',         e  => this._onTap(e));
+
+    // Info button toggle
+    if (el.btnInfo && el.infoPopover) {
+      el.btnInfo.addEventListener('click', (e) => {
+        e.stopPropagation();
+        el.infoPopover.classList.toggle('show');
+      });
+      document.addEventListener('click', (e) => {
+        if (!el.btnInfo.contains(e.target) && !el.infoPopover.contains(e.target)) {
+          el.infoPopover.classList.remove('show');
+        }
+      });
+    }
   }
 
   _updateClock() {
@@ -284,23 +299,23 @@ class LocoCam {
       { maxZoom: 20, crossOrigin: true, subdomains: 'abcd' }
     ).addTo(this.map);
 
-    // Classic Google-style red teardrop pin
+    // Classic Google-style red teardrop pin (compact & crisp)
     const pinIcon = L.divIcon({
-      html: `<svg viewBox="0 0 24 36" width="24" height="36" xmlns="http://www.w3.org/2000/svg">
+      html: `<svg viewBox="0 0 24 36" width="16" height="24" xmlns="http://www.w3.org/2000/svg">
         <path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 24 12 24S24 21 24 12C24 5.373 18.627 0 12 0z"
-              fill="#ea4335" stroke="rgba(0,0,0,0.25)" stroke-width="0.6"/>
-        <circle cx="12" cy="12" r="5" fill="white"/>
+              fill="#ea4335" stroke="rgba(0,0,0,0.25)" stroke-width="0.7"/>
+        <circle cx="12" cy="12" r="4.5" fill="white"/>
       </svg>`,
       className:  '',
-      iconSize:   [24, 36],
-      iconAnchor: [12, 36],
+      iconSize:   [16, 24],
+      iconAnchor: [8, 24],
     });
     this.marker = L.marker([20, 0], { icon: pinIcon }).addTo(this.map);
   }
 
   _updateMap(lat, lng) {
     if (!this.map) return;
-    this.map.setView([lat, lng], 15, { animate: false });
+    this.map.setView([lat, lng], 16, { animate: false });
     this.marker.setLatLng([lat, lng]);
   }
 
@@ -423,7 +438,7 @@ class LocoCam {
   }
 
   /* ─────────────────────────────────────────────
-     PHOTO CAPTURE — auto-download, no preview
+     PHOTO CAPTURE — auto-download in High Quality
   ───────────────────────────────────────────── */
   async _capturePhoto() {
     this._doFlash();
@@ -434,9 +449,13 @@ class LocoCam {
     if (!W || !H) return;
 
     const canvas = document.createElement('canvas');
-    const ctx    = canvas.getContext('2d');
+    const ctx    = canvas.getContext('2d', { alpha: false });
     canvas.width  = W;
     canvas.height = H;
+
+    // Enable high-quality smoothing for sharp export
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
 
     ctx.drawImage(video, 0, 0, W, H);
 
@@ -444,34 +463,36 @@ class LocoCam {
       await this._burnHUD(ctx, W, H);
     }
 
-    // Auto-download immediately
-    this._download(canvas.toDataURL('image/jpeg', 0.93), `LocoCam_${this._timestamp()}.jpg`);
+    // Auto-download immediately in high-quality (0.98 quality)
+    this._download(canvas.toDataURL('image/jpeg', 0.98), `LocoCam_${this._timestamp()}.jpg`);
   }
 
   /* ─────────────────────────────────────────────
-     HUD BURN-IN  (Compact Bottom-Left, Top-Aligned with Map)
+     HUD BURN-IN  (High Quality, Top Padding, Generous Badge Padding)
   ───────────────────────────────────────────── */
   async _burnHUD(ctx, W, H) {
     const isPortrait = H > W;
-    const cardH   = isPortrait ? Math.max(105, Math.round(H * 0.115)) : Math.max(105, Math.round(H * 0.155));
+    const cardH   = isPortrait ? Math.max(110, Math.round(H * 0.125)) : Math.max(110, Math.round(H * 0.165));
     const innerPad = Math.round(cardH * 0.08);
-    const mapSize  = cardH - innerPad * 2;
+
+    // Exact 1:1 Square Map
+    const mapSize  = Math.round(cardH - innerPad * 2);
     const mapW     = mapSize;
     const mapH     = mapSize;
 
-    // Font sizes
-    const fsTitle = Math.max(13.5, Math.round(cardH * 0.145));
-    const fsAddr  = Math.max(10, Math.round(cardH * 0.098));
-    const fsMeta  = Math.max(8.5, Math.round(cardH * 0.08));
+    // Font sizes (enlarged for prominence & legibility)
+    const fsTitle = Math.max(14.5, Math.round(cardH * 0.155));
+    const fsAddr  = Math.max(11, Math.round(cardH * 0.108));
+    const fsMeta  = Math.max(11, Math.round(cardH * 0.105));
 
-    const cityLine = this.addrCity || 'Unknown location';
+    const cityLine  = this.addrCity || 'Unknown location';
     const { lat, lng } = this.location;
     const coordsStr = `Lat ${lat.toFixed(6)}\u00b0  Long ${lng.toFixed(6)}\u00b0`;
     const timeStr   = this._formatDateTime();
     const addrStr   = this.addrFull || 'Precise address unavailable';
 
     // ── Measure Text Width to Fit Container Content ──
-    ctx.font = `700 ${fsTitle}px Inter, sans-serif`;
+    ctx.font = `700 ${fsTitle}px Inter, -apple-system, sans-serif`;
     const wTitle = ctx.measureText(cityLine).width;
 
     ctx.font = `500 ${fsMeta}px "JetBrains Mono", monospace`;
@@ -483,7 +504,7 @@ class LocoCam {
 
     const maxAllowedTextW = Math.round(W * (isPortrait ? 0.65 : 0.5));
     const minTextW        = Math.max(wTitle, wCoords, wTime, Math.min(wAddrRaw, maxAllowedTextW));
-    const textW           = Math.min(maxAllowedTextW, Math.max(minTextW, Math.round(W * 0.28)));
+    const textW           = Math.min(maxAllowedTextW, Math.max(minTextW, Math.round(W * 0.3)));
 
     // Dynamic Card Width (only as wide as necessary)
     const cardW = innerPad + mapW + Math.round(innerPad * 1.15) + textW + innerPad;
@@ -492,7 +513,7 @@ class LocoCam {
     const cardX   = Math.round(W * 0.03);
     const cardPadY = Math.round(H * 0.025);
     const cardY   = H - cardH - cardPadY;
-    const cardR   = Math.max(11, Math.round(cardH * 0.1));
+    const cardR   = Math.max(12, Math.round(cardH * 0.1));
 
     // ── 1. Dark Gradient Vignette for Readability ──
     const grad = ctx.createLinearGradient(0, cardY - cardH * 0.5, 0, H);
@@ -515,38 +536,13 @@ class LocoCam {
     ctx.stroke();
     ctx.restore();
 
-    // ── 3. LocoCam Notification Tag on Top-Center (No green dot) ──
-    const badgeH = Math.max(13, Math.round(cardH * 0.115));
-    const badgeW = Math.round(badgeH * 3.6);
-    const badgeX = cardX + Math.round((cardW - badgeW) / 2);
-    const badgeY = cardY - Math.round(badgeH * 0.45);
-    const badgeR = badgeH / 2;
-
-    ctx.save();
-    ctx.fillStyle = 'rgba(10, 10, 22, 0.96)';
-    ctx.beginPath();
-    this._rrect(ctx, badgeX, badgeY, badgeW, badgeH, badgeR);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(184, 255, 87, 0.55)';
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
-
-    // Centered "LOCOCAM" text (no dot)
-    ctx.fillStyle = '#b8ff57';
-    const fsBadge = Math.max(9, Math.round(badgeH * 0.58));
-    ctx.font = `700 ${fsBadge}px Inter, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('LOCOCAM', badgeX + badgeW / 2, badgeY + badgeH / 2);
-    ctx.restore();
-
-    // ── 4. Map Thumbnail with Rounded Border (Zoom 15 for broader view) ──
+    // ── 3. Exact 1:1 Square Map Thumbnail (Zoom 16 for optimal detail) ──
     const mapX    = cardX + innerPad;
     const mapY    = cardY + innerPad;
-    const mapR    = Math.max(8, Math.round(cardR * 0.7));
+    const mapR    = Math.max(9, Math.round(cardR * 0.75));
 
     try {
-      await this._drawMapTiles(ctx, this.location.lat, this.location.lng, mapX, mapY, mapW, mapH, 15, mapR);
+      await this._drawMapTiles(ctx, this.location.lat, this.location.lng, mapX, mapY, mapW, mapH, 16, mapR);
     } catch {
       ctx.save();
       ctx.fillStyle = '#20202a';
@@ -565,33 +561,65 @@ class LocoCam {
     ctx.stroke();
     ctx.restore();
 
-    // ── 5. Info Section (Starts from the Top Lining of the Map Box) ──
-    const textX = mapX + mapW + Math.round(innerPad * 1.15);
+    // ── 4. LocoCam Notification Tag inside Bottom-Right Corner (Generous Padding) ──
+    const fsBadge   = Math.max(9, Math.round(cardH * 0.082));
+    const padBadgeX = Math.round(fsBadge * 1.05);
+    const padBadgeY = Math.round(fsBadge * 0.44);
+
+    ctx.save();
+    ctx.font = `700 ${fsBadge}px Inter, sans-serif`;
+    const wBadgeText = ctx.measureText('LOCOCAM').width;
+    const badgeW = Math.round(wBadgeText + padBadgeX * 2);
+    const badgeH = Math.round(fsBadge + padBadgeY * 2);
+    const badgeX = cardX + cardW - badgeW - innerPad;
+    const badgeY = cardY + cardH - badgeH - innerPad;
+    const badgeR = badgeH / 2;
+
+    ctx.fillStyle = 'rgba(10, 10, 22, 0.96)';
+    ctx.beginPath();
+    this._rrect(ctx, badgeX, badgeY, badgeW, badgeH, badgeR);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(184, 255, 87, 0.55)';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    // Centered "LOCOCAM" text
+    ctx.fillStyle = '#b8ff57';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('LOCOCAM', badgeX + badgeW / 2, badgeY + badgeH / 2);
+    ctx.restore();
+
+    // ── 5. Info Section (With Slight Top Padding & Gap-Free Text) ──
+    const textX      = mapX + mapW + Math.round(innerPad * 1.15);
+    const textPadTop = Math.max(3, Math.round(cardH * 0.035));
+    const lineGap    = Math.round(fsMeta * 0.28);
 
     ctx.save();
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
 
-    // A. City, State, Country Title (Aligned directly with top of map box)
+    // A. City, State, Country Title (With slight top padding)
+    const titleY = mapY + textPadTop;
     ctx.fillStyle = '#ffffff';
     ctx.font      = `700 ${fsTitle}px Inter, -apple-system, sans-serif`;
-    ctx.fillText(this._ellipsis(ctx, cityLine, textW), textX, mapY);
+    ctx.fillText(this._ellipsis(ctx, cityLine, textW), textX, titleY);
 
-    // B. Full Detailed Street Address
-    const addrY = mapY + fsTitle + Math.round(fsAddr * 0.32);
+    // B. Full Detailed Street Address (Flows directly below title)
+    const addrY = titleY + fsTitle + lineGap;
     ctx.fillStyle = 'rgba(255, 255, 255, 0.88)';
     ctx.font      = `400 ${fsAddr}px Inter, -apple-system, sans-serif`;
-    const nextY  = this._wrapTextY(ctx, addrStr, textX, addrY, textW, fsAddr * 1.32, 2);
+    const nextY  = this._wrapTextY(ctx, addrStr, textX, addrY, textW, fsAddr * 1.3, 2);
 
-    // C. Coordinates
-    const coordsY  = nextY + Math.round(fsMeta * 0.38);
-    ctx.fillStyle  = 'rgba(255, 255, 255, 0.72)';
+    // C. Coordinates (Flows directly below address without artificial gap)
+    const coordsY  = nextY + lineGap;
+    ctx.fillStyle  = 'rgba(255, 255, 255, 0.76)';
     ctx.font       = `500 ${fsMeta}px "JetBrains Mono", monospace`;
     ctx.fillText(coordsStr, textX, coordsY);
 
-    // D. Date & Time
-    const timeY   = coordsY + fsMeta + Math.round(fsMeta * 0.32);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+    // D. Date & Time (Flows directly below coordinates)
+    const timeY   = coordsY + fsMeta + lineGap;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
     ctx.font      = `500 ${fsMeta}px "JetBrains Mono", monospace`;
     ctx.fillText(timeStr, textX, timeY);
 
@@ -600,7 +628,7 @@ class LocoCam {
 
   /**
    * Composites CartoDB Voyager road tiles onto ctx.
-   * Eliminates tile seam lines using 2px overlap and integer tile bounds.
+   * Uses @2x retina tiles and 2px overlap for ultra-high sharpness.
    */
   async _drawMapTiles(ctx, lat, lng, mx, my, mw, mh, zoom, cornerRadius = 8) {
     const TS    = 256;
@@ -632,8 +660,13 @@ class LocoCam {
         if (py + TS <= my || py >= my + mh) continue;
 
         const s   = subs[(Math.abs(tx) + Math.abs(ty)) % 4];
-        const url = `https://${s}.basemaps.cartocdn.com/rastertiles/voyager/${zoom}/${tx}/${ty}.png`;
-        jobs.push(this._loadImg(url).then(img => ({ img, px, py })).catch(() => null));
+        // @2x retina tiles for crisp HD output
+        const url = `https://${s}.basemaps.cartocdn.com/rastertiles/voyager/${zoom}/${tx}/${ty}@2x.png`;
+        jobs.push(this._loadImg(url).then(img => ({ img, px, py })).catch(() => {
+          // Fallback to standard 1x tile if 2x fails
+          const fbUrl = `https://${s}.basemaps.cartocdn.com/rastertiles/voyager/${zoom}/${tx}/${ty}.png`;
+          return this._loadImg(fbUrl).then(img => ({ img, px, py })).catch(() => null);
+        }));
       }
     }
 
@@ -655,28 +688,27 @@ class LocoCam {
       }
     }
 
-    // Red teardrop pin at the center (user's location)
-    this._drawRedPin(ctx, mx + mw / 2, my + mh / 2);
+    // Red teardrop pin at the center (proportional to map size)
+    this._drawRedPin(ctx, mx + mw / 2, my + mh / 2, mw);
 
     ctx.restore();
   }
 
-  /** Draws a Google Maps-style red teardrop pin centered at (cx, cy tip) */
-  _drawRedPin(ctx, cx, cy) {
-    const r    = Math.max(7, Math.round(cy * 0.015)) || 8;
-    const tailH = r * 1.5;
-    const pinY  = cy - tailH - r; // top of circle
+  /** Draws a classic Google Maps red teardrop pin (properly proportioned, not elongated) */
+  _drawRedPin(ctx, cx, cy, mapW = 100) {
+    const r     = Math.max(5.5, Math.round(mapW * 0.065));
+    const headY = cy - Math.round(r * 1.8); // center of circle
 
     ctx.save();
-    ctx.shadowColor   = 'rgba(0,0,0,0.5)';
-    ctx.shadowBlur    = 6;
-    ctx.shadowOffsetY = 2;
+    ctx.shadowColor   = 'rgba(0,0,0,0.45)';
+    ctx.shadowBlur    = Math.max(3, Math.round(r * 0.4));
+    ctx.shadowOffsetY = Math.max(1.5, Math.round(r * 0.2));
 
     // Teardrop body
     ctx.beginPath();
-    ctx.arc(cx, pinY, r, Math.PI, 0);         // top half
-    ctx.quadraticCurveTo(cx + r, pinY + r * 1.1, cx, cy);  // right curve to tip
-    ctx.quadraticCurveTo(cx - r, pinY + r * 1.1, cx - r, pinY); // left curve back
+    ctx.arc(cx, headY, r, Math.PI, 0, false);            // top semi-circle
+    ctx.quadraticCurveTo(cx + r, headY + r * 0.9, cx, cy); // right curve to tip
+    ctx.quadraticCurveTo(cx - r, headY + r * 0.9, cx - r, headY); // left curve from tip
     ctx.closePath();
     ctx.fillStyle = '#ea4335';
     ctx.fill();
@@ -686,7 +718,7 @@ class LocoCam {
 
     // White center dot
     ctx.beginPath();
-    ctx.arc(cx, pinY, r * 0.42, 0, Math.PI * 2);
+    ctx.arc(cx, headY, r * 0.42, 0, Math.PI * 2);
     ctx.fillStyle = 'white';
     ctx.fill();
 
