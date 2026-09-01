@@ -307,26 +307,12 @@ class LocoCam {
           const isMatch = (activeId && device.deviceId === activeId) || (!activeId && index === 0) || (activeLabel && device.label === activeLabel);
 
           let rawName = device.label || `Camera ${index + 1}`;
-          let subType = 'Camera Input';
-          const lower = rawName.toLowerCase();
-          if (lower.includes('facetime') || lower.includes('built-in') || lower.includes('isight') || lower.includes('integrated') || lower.includes('internal')) {
-            subType = 'Built-in';
-          } else if (lower.includes('usb') || lower.includes('webcam') || lower.includes('external') || lower.includes('c920') || lower.includes('c922') || lower.includes('brio') || lower.includes('droidcam') || lower.includes('obs')) {
-            subType = 'USB Camera';
-          } else if (lower.includes('back') || lower.includes('rear') || lower.includes('environment')) {
-            subType = 'Rear Camera';
-          } else if (lower.includes('front') || lower.includes('user') || lower.includes('selfie')) {
-            subType = 'Front Camera';
-          }
 
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.className = `glass-cam-item ${isMatch ? 'active' : ''}`;
           btn.innerHTML = `
-            <div class="glass-cam-info">
-              <span class="glass-cam-name" title="${rawName}">${rawName}</span>
-              <span class="glass-cam-sub">${subType}</span>
-            </div>
+            <span class="glass-cam-name" title="${rawName}">${rawName}</span>
             ${isMatch ? '<span class="glass-cam-check">✓</span>' : ''}
           `;
 
