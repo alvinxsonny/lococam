@@ -90,6 +90,7 @@ class LocoCam {
       hudClock : q('hud-clock'),
 
       shutterBtn : q('btn-shutter'),
+      btnSnap    : q('btn-snap'),
       btnInfo    : q('btn-info'),
       infoPopover: q('info-popover'),
 
@@ -124,6 +125,14 @@ class LocoCam {
     el.btnRetake.addEventListener('click',     () => this._retake());
     el.btnSave.addEventListener('click',       () => this._save());
     el.video.addEventListener('click',         e  => this._onTap(e));
+
+    // Secondary Snapshot Button (capture photo during video recording)
+    if (el.btnSnap) {
+      el.btnSnap.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._capturePhoto();
+      });
+    }
 
     // Camera Input Menu Toggle
     if (el.btnCamSelect && el.camMenu) {
