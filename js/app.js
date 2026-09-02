@@ -740,12 +740,30 @@ class LocoCam {
     ctx.font = `400 ${fsAddr}px Inter, -apple-system, sans-serif`;
     const wAddrRaw = ctx.measureText(addrStr).width;
 
-    const maxAllowedTextW = Math.round(W * (isPortrait ? 0.65 : 0.5));
-    const minTextW        = Math.max(wTitle, wCoords, wTime, Math.min(wAddrRaw, maxAllowedTextW));
-    const textW           = Math.min(maxAllowedTextW, Math.max(minTextW, Math.round(W * 0.3)));
+    const badgeText = 'GPS MAP CAMERA | LOCOCAM';
+    const fsBadge   = Math.max(8.5, Math.round(cardH * 0.076));
+    const camSize   = Math.round(fsBadge * 1.05);
+    const camGap    = Math.round(fsBadge * 0.42);
+    const padBadgeX = Math.round(fsBadge * 0.82);
+    const padBadgeY = Math.round(fsBadge * 0.36);
 
-    // Dynamic Card Width (only as wide as necessary)
-    const cardW = innerPad + mapW + Math.round(innerPad * 1.15) + textW + innerPad;
+    ctx.save();
+    ctx.font = `600 ${fsBadge}px Inter, -apple-system, sans-serif`;
+    const wBadgeText = ctx.measureText(badgeText).width;
+    ctx.restore();
+
+    const badgeContentW = camSize + camGap + wBadgeText;
+    const badgeW = Math.round(badgeContentW + padBadgeX * 2);
+    const badgeH = Math.round(fsBadge + padBadgeY * 2);
+    const badgeR = badgeH / 2;
+
+    // Dynamic Card Width (only as wide as necessary, guaranteed to fit text)
+    const maxAllowedTextW = Math.round(W * (isPortrait ? 0.72 : 0.58));
+    const minTextW        = Math.max(wTitle, wCoords, wTime, Math.min(wAddrRaw, maxAllowedTextW));
+    const textW           = Math.min(maxAllowedTextW, Math.max(minTextW, Math.round(W * 0.32)));
+
+    const minCardW = mapW + Math.round(innerPad * 1.15) + badgeW + innerPad;
+    const cardW    = Math.max(innerPad + mapW + Math.round(innerPad * 1.15) + textW + innerPad, minCardW);
 
     // Bottom-Left Alignment
     const cardX   = Math.round(W * 0.03);
@@ -799,55 +817,54 @@ class LocoCam {
     ctx.stroke();
     ctx.restore();
 
-    // ── 4. LocoCam Notification Tag inside Bottom-Right Corner ──
-    const fsBadge   = Math.max(9, Math.round(cardH * 0.082));
-    const padBadgeX = Math.round(fsBadge * 1.05);
-    const padBadgeY = Math.round(fsBadge * 0.44);
+    // ── 4. Minimal Subtle Badge Outside Container in Top-Right (Seamlessly Joined) ──
+    const badgeX = cardX + cardW - badgeW - Math.max(innerPad, Math.round(cardR * 0.8));
+    const badgeY = cardY - Math.round(badgeH * 0.5);
 
     ctx.save();
-    ctx.font = `700 ${fsBadge}px Inter, sans-serif`;
-    const wBadgeText = ctx.measureText('LOCOCAM').width;
-    const badgeW = Math.round(wBadgeText + padBadgeX * 2);
-    const badgeH = Math.round(fsBadge + padBadgeY * 2);
-    const badgeX = cardX + cardW - badgeW - innerPad;
-    const badgeY = cardY + cardH - badgeH - innerPad;
-    const badgeR = badgeH / 2;
-
-    ctx.fillStyle = 'rgba(24, 26, 31, 0.97)';
+    // Subtle translucent dark pill matching container seamlessly
+    ctx.fillStyle = 'rgba(22, 24, 30, 0.92)';
     ctx.beginPath();
     this._rrect(ctx, badgeX, badgeY, badgeW, badgeH, badgeR);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(184, 255, 87, 0.45)';
-    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+    ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Centered "LOCOCAM" text
-    ctx.fillStyle = '#b8ff57';
-    ctx.textAlign = 'center';
+    // Small Camera Icon at the start
+    const camCx = badgeX + padBadgeX + camSize / 2;
+    const camCy = badgeY + badgeH / 2;
+    this._drawCameraIcon(ctx, camCx, camCy, camSize);
+
+    // Subtle refined text
+    ctx.font = `600 ${fsBadge}px Inter, -apple-system, sans-serif`;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.86)';
+    ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText('LOCOCAM', badgeX + badgeW / 2, badgeY + badgeH / 2);
+    ctx.fillText(badgeText, badgeX + padBadgeX + camSize + camGap, badgeY + badgeH / 2);
     ctx.restore();
 
     // ── 5. Info Section (With Slight Top Padding & Gap-Free Text) ──
     const textX      = mapX + mapW + Math.round(innerPad * 1.15);
     const textPadTop = Math.max(3, Math.round(cardH * 0.035));
     const lineGap    = Math.round(fsMeta * 0.28);
+    const maxContentW = (cardX + cardW - innerPad) - textX;
 
     ctx.save();
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
 
-    // A. City, State, Country Title (With slight top padding)
+    // A. City, State, Country Title
     const titleY = mapY + textPadTop;
     ctx.fillStyle = '#ffffff';
     ctx.font      = `700 ${fsTitle}px Inter, -apple-system, sans-serif`;
-    ctx.fillText(this._ellipsis(ctx, cityLine, textW), textX, titleY);
+    ctx.fillText(this._ellipsis(ctx, cityLine, maxContentW), textX, titleY);
 
     // B. Full Detailed Street Address (Flows directly below title)
     const addrY = titleY + fsTitle + lineGap;
     ctx.fillStyle = 'rgba(255, 255, 255, 0.88)';
     ctx.font      = `400 ${fsAddr}px Inter, -apple-system, sans-serif`;
-    const nextY  = this._wrapTextY(ctx, addrStr, textX, addrY, textW, fsAddr * 1.3, 2);
+    const nextY  = this._wrapTextY(ctx, addrStr, textX, addrY, maxContentW, fsAddr * 1.3, 2);
 
     // C. Coordinates (Flows directly below address without artificial gap)
     const coordsY  = nextY + lineGap;
@@ -1209,6 +1226,56 @@ class LocoCam {
     ctx.lineTo(x,     y + r);
     ctx.arcTo(x,     y,     x + r, y,         r);
     ctx.closePath();
+  }
+
+  /**
+   * Draws a crisp small camera vector icon on canvas.
+   */
+  _drawCameraIcon(ctx, cx, cy, size) {
+    const w = size;
+    const h = size * 0.76;
+    const bodyX = cx - w / 2;
+    const bodyY = cy - h / 2 + h * 0.12;
+    const bodyW = w;
+    const bodyH = h * 0.88;
+    const r = Math.max(1, bodyH * 0.18);
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.86)';
+    ctx.lineWidth = Math.max(1, size * 0.12);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    // Camera body with top notch/pentaprism
+    const humpW = w * 0.36;
+    const humpH = h * 0.22;
+    const humpX = cx - humpW / 2;
+    const humpY = bodyY - humpH * 0.75;
+
+    ctx.beginPath();
+    // Top notch
+    ctx.moveTo(humpX, bodyY);
+    ctx.lineTo(humpX + humpW * 0.18, humpY);
+    ctx.lineTo(humpX + humpW * 0.82, humpY);
+    ctx.lineTo(humpX + humpW, bodyY);
+
+    // Outer rounded rectangle
+    ctx.lineTo(bodyX + bodyW - r, bodyY);
+    ctx.arcTo(bodyX + bodyW, bodyY, bodyX + bodyW, bodyY + r, r);
+    ctx.lineTo(bodyX + bodyW, bodyY + bodyH - r);
+    ctx.arcTo(bodyX + bodyW, bodyY + bodyH, bodyX + bodyW - r, bodyY + bodyH, r);
+    ctx.lineTo(bodyX + r, bodyY + bodyH);
+    ctx.arcTo(bodyX, bodyY + bodyH, bodyX, bodyY + bodyH - r, r);
+    ctx.lineTo(bodyX, bodyY + r);
+    ctx.arcTo(bodyX, bodyY, bodyX + r, bodyY, r);
+    ctx.closePath();
+    ctx.stroke();
+
+    // Center lens circle
+    ctx.beginPath();
+    ctx.arc(cx, bodyY + bodyH * 0.52, bodyH * 0.24, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
   }
 
   _loadImg(url) {
