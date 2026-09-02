@@ -77,7 +77,7 @@
         <!-- Top Bar -->
         <header class="top-bar">
           <div class="top-left-controls">
-            <button id="btn-flip" class="icon-btn" aria-label="Flip camera">
+            <button id="btn-flip" class="icon-btn" aria-label="Flip camera" title="Flip front / back camera">
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -93,12 +93,25 @@
               </svg>
             </button>
 
-            <!-- Camera Input Select Button & Popover -->
+            <!-- Camera Power On/Off Toggle Button (Dedicated Power Icon) -->
+            <button id="btn-cam-power" class="icon-btn" aria-label="Turn off camera" title="Turn camera off / on">
+              <svg class="icon-cam-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+                <line x1="12" y1="2" x2="12" y2="12" />
+              </svg>
+              <svg class="icon-cam-off hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+                <line x1="12" y1="2" x2="12" y2="12" />
+              </svg>
+            </button>
+
+            <!-- Camera Input Select Button & Popover (Camera Input Selector with Multi-Camera Indicator) -->
             <div class="cam-select-wrapper">
-              <button id="btn-cam-select" class="icon-btn" aria-label="Select camera input" tabindex="0">
+              <button id="btn-cam-select" class="icon-btn" aria-label="Select camera input" title="Select camera input" tabindex="0">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M23 7l-7 5 7 5V7z" />
-                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="3.5" />
+                  <path d="M18 4v3m1.5-1.5h-3" stroke-width="2" />
                 </svg>
               </button>
               <div id="cam-menu" class="glass-window cam-menu" role="menu" aria-label="Available cameras">
@@ -127,7 +140,22 @@
           </div>
 
           <div class="top-actions">
-            <button id="btn-hud" class="icon-btn" aria-label="Toggle HUD overlay">
+            <!-- Map View Switcher Button (Satellite / Normal) near HUD button -->
+            <button id="btn-map-layer" class="icon-btn" aria-label="Switch map view (Normal / Satellite)" title="Switch map view (Satellite / Normal)">
+              <svg class="icon-layer-normal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                <polyline points="2 17 12 22 22 17" />
+                <polyline points="2 12 12 17 22 12" />
+              </svg>
+              <svg class="icon-layer-sat hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="2" y1="12" x2="22" y2="12" />
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+              </svg>
+            </button>
+
+            <!-- Toggle HUD Overlay Button -->
+            <button id="btn-hud" class="icon-btn" aria-label="Toggle HUD overlay" title="Toggle HUD overlay">
               <svg
                 class="icon-eye"
                 viewBox="0 0 24 24"
@@ -168,7 +196,7 @@
               <div id="info-popover" class="glass-window info-popover" role="tooltip">
                 <div class="glass-window-header">
                   <span class="glass-window-title">LocoCam</span>
-                  <span class="glass-pill-badge">v1.0</span>
+                  <span class="glass-pill-badge">v1.1</span>
                 </div>
                 <div class="glass-author-line">
                   Made by <strong>Martin</strong>
@@ -192,6 +220,21 @@
             </div>
           </div>
         </header>
+
+        <!-- Camera Off Standby Screen Overlay -->
+        <div id="cam-off-overlay" class="cam-off-overlay hidden">
+          <div class="cam-off-card">
+            <div class="cam-off-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+                <line x1="12" y1="2" x2="12" y2="12" />
+              </svg>
+            </div>
+            <h2>Camera is Off</h2>
+            <p>Feed is paused to save power and privacy.</p>
+            <button id="btn-turn-on" class="btn-primary btn-turn-on">Turn On Camera</button>
+          </div>
+        </div>
 
         <!-- Recording indicator -->
         <div id="rec-bar" class="rec-bar hidden" aria-live="polite">

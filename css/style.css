@@ -2,14 +2,14 @@
    DESIGN TOKENS
 ══════════════════════════════════════════════ */
 :root {
-  --bg:           #07070f;
+  --bg:           #101216;
   --accent:       #b8ff57;
   --accent-glow:  rgba(184, 255, 87, 0.35);
-  --glass:        rgba(255, 255, 255, 0.07);
-  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass:        rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.12);
   --text-1:       #ffffff;
-  --text-2:       rgba(255, 255, 255, 0.55);
-  --text-3:       rgba(255, 255, 255, 0.28);
+  --text-2:       rgba(255, 255, 255, 0.62);
+  --text-3:       rgba(255, 255, 255, 0.35);
   --danger:       #ff4d4d;
   --radius-sm:    10px;
   --radius-md:    16px;
@@ -225,7 +225,11 @@ button {
 .icon-btn svg   { width: 18px; height: 18px; }
 .icon-btn:hover { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.22); }
 .icon-btn:active { transform: scale(0.88); }
-.icon-btn.dim   { opacity: 0.32; }
+.icon-btn.cam-off {
+  background: rgba(255, 77, 77, 0.2);
+  border-color: rgba(255, 77, 77, 0.45);
+  color: #ff6b6b;
+}
 
 /* ── Mode pill (Photo / Video Switcher) ── */
 .mode-pill {
@@ -269,13 +273,13 @@ button {
   position: absolute;
   top: calc(100% + 12px);
   width: 250px;
-  background: rgba(14, 15, 23, 0.84);
-  backdrop-filter: blur(28px) saturate(190%);
-  -webkit-backdrop-filter: blur(28px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(26, 28, 34, 0.9);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: 18px;
   padding: 14px 14px;
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   opacity: 0;
   visibility: hidden;
   transform: translateY(-6px) scale(0.96);
@@ -450,10 +454,10 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(0, 0, 0, 0.68);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(28, 30, 36, 0.86);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-full);
   padding: 6px 14px;
   font-size: 13px;
@@ -471,6 +475,70 @@ button {
 @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.15; } }
 
 /* ══════════════════════════════════════════════
+   CAMERA OFF STANDBY OVERLAY
+══════════════════════════════════════════════ */
+.cam-off-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(32, 35, 43, 0.96), rgba(16, 17, 22, 0.99));
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.cam-off-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 24px;
+  max-width: 320px;
+  text-align: center;
+}
+
+.cam-off-icon {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.65);
+  margin-bottom: 2px;
+}
+
+.cam-off-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.cam-off-card h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.4px;
+}
+
+.cam-off-card p {
+  font-size: 13.5px;
+  color: var(--text-2);
+  line-height: 1.55;
+  max-width: 260px;
+}
+
+.btn-turn-on {
+  padding: 12px 32px;
+  font-size: 14px;
+  margin-top: 6px;
+}
+
+/* ══════════════════════════════════════════════
    HUD CONTAINER (Map + Info + Right-Center Shutter)
 ══════════════════════════════════════════════ */
 .hud {
@@ -484,11 +552,11 @@ button {
   gap: 11px;
   padding: 10px 14px 10px 10px;
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(10, 10, 22, 0.85);
-  backdrop-filter: blur(28px) saturate(1.8);
-  -webkit-backdrop-filter: blur(28px) saturate(1.8);
-  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06) inset, 0 4px 24px rgba(184, 255, 87, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(30, 32, 38, 0.88);
+  backdrop-filter: blur(28px) saturate(1.5);
+  -webkit-backdrop-filter: blur(28px) saturate(1.5);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08) inset, 0 4px 22px rgba(0, 0, 0, 0.35);
   z-index: 20;
   transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
 }
@@ -510,9 +578,9 @@ button {
   justify-content: center;
   padding: 3px 12px;
   border-radius: 9999px;
-  background: rgba(10, 10, 22, 0.96);
-  border: 1px solid rgba(184, 255, 87, 0.55);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5), 0 0 10px rgba(184, 255, 87, 0.25);
+  background: rgba(24, 26, 31, 0.97);
+  border: 1px solid rgba(184, 255, 87, 0.45);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45), 0 0 10px rgba(184, 255, 87, 0.18);
   z-index: 5;
   pointer-events: none;
 }
@@ -535,8 +603,8 @@ button {
   border-radius: 14px;
   overflow: hidden;
   position: relative;
-  background: #e5e3df;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #252830;
+  border: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
   flex-shrink: 0;
 }
@@ -544,6 +612,14 @@ button {
 .hud-map {
   width: 100%;
   height: 100%;
+}
+
+/* Map Layer Switcher Button (Top Bar Icon Button) */
+#btn-map-layer.satellite {
+  background: rgba(184, 255, 87, 0.18);
+  border-color: rgba(184, 255, 87, 0.45);
+  color: var(--accent);
+  box-shadow: 0 0 14px rgba(184, 255, 87, 0.16);
 }
 
 /* Hide default Leaflet chrome */
@@ -745,10 +821,10 @@ button {
   gap: 10px;
   padding: 16px;
   padding-bottom: calc(16px + var(--safe-bottom));
-  background: rgba(0, 0, 0, 0.88);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(24, 26, 31, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .prev-btn {

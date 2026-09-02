@@ -15,10 +15,14 @@ class LocoCam {
     // Camera
     this.stream      = null;
     this.facingMode  = 'environment';
+    this.isCameraOn  = true;
 
     // Map
-    this.map    = null;
-    this.marker = null;
+    this.map         = null;
+    this.marker      = null;
+    this.mapLayer    = 'normal'; // 'normal' | 'satellite'
+    this.normalLayer = null;
+    this.satLayer    = null;
 
     // Location
     this.location     = null;   // { lat, lng }
@@ -69,6 +73,11 @@ class LocoCam {
       focusRing  : q('focus-ring'),
 
       btnFlip      : q('btn-flip'),
+      btnCamPower  : q('btn-cam-power'),
+      iconCamOn    : document.querySelector('.icon-cam-on'),
+      iconCamOff   : document.querySelector('.icon-cam-off'),
+      camOffOverlay: q('cam-off-overlay'),
+      btnTurnOn    : q('btn-turn-on'),
       btnCamSelect : q('btn-cam-select'),
       camMenu      : q('cam-menu'),
       camList      : q('cam-list'),
@@ -82,12 +91,15 @@ class LocoCam {
       recBar   : q('rec-bar'),
       recTime  : q('rec-time'),
 
-      hud      : q('hud'),
-      mapEl    : q('map-el'),
-      hudAddr  : q('hud-addr'),
-      hudAddrFull: q('hud-addr-full'),
-      hudCoords: q('hud-coords'),
-      hudClock : q('hud-clock'),
+      hud            : q('hud'),
+      mapEl          : q('map-el'),
+      btnMapLayer    : q('btn-map-layer'),
+      iconLayerNormal: document.querySelector('.icon-layer-normal'),
+      iconLayerSat   : document.querySelector('.icon-layer-sat'),
+      hudAddr        : q('hud-addr'),
+      hudAddrFull    : q('hud-addr-full'),
+      hudCoords      : q('hud-coords'),
+      hudClock       : q('hud-clock'),
 
       shutterBtn : q('btn-shutter'),
       btnSnap    : q('btn-snap'),
@@ -118,6 +130,12 @@ class LocoCam {
     const { el } = this;
     el.btnGrant.addEventListener('click',      () => this._tryStart());
     el.btnFlip.addEventListener('click',       () => this._flipCamera());
+    if (el.btnCamPower) el.btnCamPower.addEventListener('click', () => this._toggleCameraPower());
+    if (el.btnTurnOn)   el.btnTurnOn.addEventListener('click',   () => this._toggleCameraPower(true));
+    if (el.btnMapLayer) el.btnMapLayer.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._toggleMapLayer();
+    });
     el.btnModePhoto.addEventListener('click',  () => this._setMode('photo'));
     el.btnModeVideo.addEventListener('click',  () => this._setMode('video'));
     el.btnHud.addEventListener('click',        () => this._toggleHUD());
@@ -241,6 +259,16 @@ class LocoCam {
 
     this.stream = await navigator.mediaDevices.getUserMedia(constraints);
     this.el.video.srcObject = this.stream;
+    this.isCameraOn = true;
+
+    if (this.el.camOffOverlay) this.el.camOffOverlay.classList.add('hidden');
+    if (this.el.btnCamPower) {
+      this.el.btnCamPower.classList.remove('cam-off');
+      this.el.btnCamPower.setAttribute('aria-label', 'Turn off camera');
+      this.el.btnCamPower.setAttribute('title', 'Turn camera off');
+    }
+    if (this.el.iconCamOn)  this.el.iconCamOn.classList.remove('hidden');
+    if (this.el.iconCamOff) this.el.iconCamOff.classList.add('hidden');
 
     const activeTrack = this.stream.getVideoTracks()[0];
     if (activeTrack) {
@@ -255,6 +283,35 @@ class LocoCam {
     return new Promise(resolve => {
       this.el.video.onloadedmetadata = () => resolve();
     });
+  }
+
+  async _toggleCameraPower(forceOn = false) {
+    const willTurnOn = forceOn ? true : !this.isCameraOn;
+    if (willTurnOn) {
+      try {
+        await this._startCamera();
+      } catch (err) {
+        console.error('Failed to turn on camera:', err);
+      }
+    } else {
+      if (this.isRecording) {
+        await this._stopRecording();
+      }
+      if (this.stream) {
+        this.stream.getTracks().forEach(t => t.stop());
+        this.stream = null;
+      }
+      this.isCameraOn = false;
+      this.el.video.srcObject = null;
+      if (this.el.camOffOverlay) this.el.camOffOverlay.classList.remove('hidden');
+      if (this.el.btnCamPower) {
+        this.el.btnCamPower.classList.add('cam-off');
+        this.el.btnCamPower.setAttribute('aria-label', 'Turn on camera');
+        this.el.btnCamPower.setAttribute('title', 'Turn camera on');
+      }
+      if (this.el.iconCamOn)  this.el.iconCamOn.classList.add('hidden');
+      if (this.el.iconCamOff) this.el.iconCamOff.classList.remove('hidden');
+    }
   }
 
   async _flipCamera() {
@@ -406,12 +463,11 @@ class LocoCam {
   }
 
   /* ─────────────────────────────────────────────
-     MAP (Google Maps or Leaflet + Esri satellite)
+     MAP (Leaflet with Normal & Satellite view support)
   ───────────────────────────────────────────── */
   _initMap() {
     if (this.map) return;
 
-    // ── Leaflet + CartoDB Voyager (clean road map, free, CORS-friendly) ──
     this.map = L.map(this.el.mapEl, {
       zoomControl:        false,
       attributionControl: false,
@@ -423,11 +479,23 @@ class LocoCam {
       tap:                false,
     }).setView([20, 0], 2);
 
-    // CartoDB Voyager — crisp road map, great detail, no API key needed
-    L.tileLayer(
+    // Normal road layer: CartoDB Voyager
+    this.normalLayer = L.tileLayer(
       'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
       { maxZoom: 20, crossOrigin: true, subdomains: 'abcd' }
-    ).addTo(this.map);
+    );
+
+    // Satellite layer: Esri World Imagery (Crisp, free, CORS-friendly)
+    this.satLayer = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      { maxZoom: 19, crossOrigin: true }
+    );
+
+    if (this.mapLayer === 'satellite') {
+      this.satLayer.addTo(this.map);
+    } else {
+      this.normalLayer.addTo(this.map);
+    }
 
     // Classic Google-style red teardrop pin (compact & crisp)
     const pinIcon = L.divIcon({
@@ -441,6 +509,38 @@ class LocoCam {
       iconAnchor: [8, 24],
     });
     this.marker = L.marker([20, 0], { icon: pinIcon }).addTo(this.map);
+  }
+
+  _toggleMapLayer() {
+    this.mapLayer = this.mapLayer === 'normal' ? 'satellite' : 'normal';
+    const isSat = this.mapLayer === 'satellite';
+
+    if (this.map && this.normalLayer && this.satLayer) {
+      if (isSat) {
+        if (this.map.hasLayer(this.normalLayer)) this.map.removeLayer(this.normalLayer);
+        this.satLayer.addTo(this.map);
+      } else {
+        if (this.map.hasLayer(this.satLayer)) this.map.removeLayer(this.satLayer);
+        this.normalLayer.addTo(this.map);
+      }
+    }
+
+    if (this.el.btnMapLayer) {
+      this.el.btnMapLayer.classList.toggle('satellite', isSat);
+      this.el.btnMapLayer.setAttribute(
+        'title',
+        isSat ? 'Map view: Satellite (click for Normal)' : 'Map view: Normal (click for Satellite)'
+      );
+    }
+    if (this.el.iconLayerNormal) {
+      this.el.iconLayerNormal.classList.toggle('hidden', isSat);
+    }
+    if (this.el.iconLayerSat) {
+      this.el.iconLayerSat.classList.toggle('hidden', !isSat);
+    }
+
+    // Clear cached map canvas so video recording / snapshot updates immediately
+    this._cachedMapCanvas = null;
   }
 
   _updateMap(lat, lng) {
@@ -551,6 +651,11 @@ class LocoCam {
      SHUTTER
   ───────────────────────────────────────────── */
   _onShutter() {
+    if (!this.isCameraOn) {
+      this._toggleCameraPower(true);
+      return;
+    }
+
     if (this.mode === 'photo') {
       this._capturePhoto();
     } else if (this.isRecording) {
@@ -571,6 +676,7 @@ class LocoCam {
      PHOTO CAPTURE — auto-download in High Quality
   ───────────────────────────────────────────── */
   async _capturePhoto() {
+    if (!this.isCameraOn) return;
     this._doFlash();
 
     const video = this.el.video;
@@ -655,15 +761,15 @@ class LocoCam {
     ctx.fillStyle = grad;
     ctx.fillRect(0, cardY - cardH * 0.5, W, H - (cardY - cardH * 0.5));
 
-    // ── 2. Glassmorphism HUD Card Container ──
+    // ── 2. Glassmorphism HUD Card Container (Greyish themed) ──
     ctx.save();
-    ctx.fillStyle = 'rgba(10, 10, 22, 0.86)';
+    ctx.fillStyle = 'rgba(30, 32, 38, 0.88)';
     ctx.beginPath();
     this._rrect(ctx, cardX, cardY, cardW, cardH, cardR);
     ctx.fill();
 
     // Subtle luminous card border
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
     ctx.lineWidth = Math.max(1.5, Math.round(W * 0.0015));
     ctx.stroke();
     ctx.restore();
@@ -686,14 +792,14 @@ class LocoCam {
 
     // Map thumbnail border
     ctx.save();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.24)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
     ctx.lineWidth = Math.max(1.2, Math.round(W * 0.001));
     ctx.beginPath();
     this._rrect(ctx, mapX, mapY, mapW, mapH, mapR);
     ctx.stroke();
     ctx.restore();
 
-    // ── 4. LocoCam Notification Tag inside Bottom-Right Corner (Generous Padding) ──
+    // ── 4. LocoCam Notification Tag inside Bottom-Right Corner ──
     const fsBadge   = Math.max(9, Math.round(cardH * 0.082));
     const padBadgeX = Math.round(fsBadge * 1.05);
     const padBadgeY = Math.round(fsBadge * 0.44);
@@ -707,11 +813,11 @@ class LocoCam {
     const badgeY = cardY + cardH - badgeH - innerPad;
     const badgeR = badgeH / 2;
 
-    ctx.fillStyle = 'rgba(10, 10, 22, 0.96)';
+    ctx.fillStyle = 'rgba(24, 26, 31, 0.97)';
     ctx.beginPath();
     this._rrect(ctx, badgeX, badgeY, badgeW, badgeH, badgeR);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(184, 255, 87, 0.55)';
+    ctx.strokeStyle = 'rgba(184, 255, 87, 0.45)';
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
@@ -780,8 +886,8 @@ class LocoCam {
   }
 
   /**
-   * Composites CartoDB Voyager road tiles onto ctx.
-   * Uses @2x retina tiles and 2px overlap for ultra-high sharpness.
+   * Composites Map tiles (Normal CartoDB Voyager or Esri World Imagery Satellite) onto ctx.
+   * Uses @2x retina tiles where available and 2px overlap for ultra-high sharpness.
    */
   async _drawMapTiles(ctx, lat, lng, mx, my, mw, mh, zoom, cornerRadius = 8) {
     const TS    = 256;
@@ -802,7 +908,9 @@ class LocoCam {
     const rY   = Math.ceil(mh / TS) + 2;
 
     const subs = ['a', 'b', 'c', 'd'];
+    const isSat = this.mapLayer === 'satellite';
     const jobs = [];
+
     for (let dy = -rY; dy <= rY; dy++) {
       for (let dx = -rX; dx <= rX; dx++) {
         const tx = ctX + dx;
@@ -812,14 +920,20 @@ class LocoCam {
         if (px + TS <= mx || px >= mx + mw) continue;
         if (py + TS <= my || py >= my + mh) continue;
 
-        const s   = subs[(Math.abs(tx) + Math.abs(ty)) % 4];
-        // @2x retina tiles for crisp HD output
-        const url = `https://${s}.basemaps.cartocdn.com/rastertiles/voyager/${zoom}/${tx}/${ty}@2x.png`;
-        jobs.push(this._loadImg(url).then(img => ({ img, px, py })).catch(() => {
-          // Fallback to standard 1x tile if 2x fails
-          const fbUrl = `https://${s}.basemaps.cartocdn.com/rastertiles/voyager/${zoom}/${tx}/${ty}.png`;
-          return this._loadImg(fbUrl).then(img => ({ img, px, py })).catch(() => null);
-        }));
+        if (isSat) {
+          // Esri World Imagery satellite tiles (free, CORS-friendly)
+          const satUrl = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${ty}/${tx}`;
+          jobs.push(this._loadImg(satUrl).then(img => ({ img, px, py })).catch(() => null));
+        } else {
+          const s = subs[(Math.abs(tx) + Math.abs(ty)) % 4];
+          // @2x retina tiles for crisp HD output
+          const url = `https://${s}.basemaps.cartocdn.com/rastertiles/voyager/${zoom}/${tx}/${ty}@2x.png`;
+          jobs.push(this._loadImg(url).then(img => ({ img, px, py })).catch(() => {
+            // Fallback to standard 1x tile if 2x fails
+            const fbUrl = `https://${s}.basemaps.cartocdn.com/rastertiles/voyager/${zoom}/${tx}/${ty}.png`;
+            return this._loadImg(fbUrl).then(img => ({ img, px, py })).catch(() => null);
+          }));
+        }
       }
     }
 
@@ -830,13 +944,13 @@ class LocoCam {
     this._rrect(ctx, mx, my, mw, mh, cornerRadius);
     ctx.clip();
 
-    // Fill neutral CartoDB base tone underneath to prevent any background transparency
-    ctx.fillStyle = '#f2efe9';
+    // Base tone underneath tiles
+    ctx.fillStyle = isSat ? '#1e2129' : '#f2efe9';
     ctx.fillRect(mx, my, mw, mh);
 
     // Draw tiles with integer coordinates & 2px overlap to eliminate hairline seams
     for (const t of tiles) {
-      if (t) {
+      if (t && t.img) {
         ctx.drawImage(t.img, Math.floor(t.px), Math.floor(t.py), TS + 2, TS + 2);
       }
     }
