@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <!-- Vibrant Modern Red Gradient -->
+    <linearGradient id="pinRed" x1="16" y1="3" x2="48" y2="61" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ff453a"/>
+      <stop offset="55%" stop-color="#e01228"/>
+      <stop offset="100%" stop-color="#c40015"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Sleek Red Location Pin (Transparent Background) -->
+  <path
+    d="M 32 3.5 C 18.5 3.5 7.5 14.5 7.5 28 C 7.5 43.2 28.2 58.8 31.1 60.9 C 31.6 61.3 32.4 61.3 32.9 60.9 C 35.8 58.8 56.5 43.2 56.5 28 C 56.5 14.5 45.5 3.5 32 3.5 Z"
+    fill="url(#pinRed)"
+  />
+
+  <!-- Crisp Camera Body (Well-Proportioned, Subtle Curves) -->
+  <!-- Top Pentaprism / Viewfinder Bump -->
+  <path
+    d="M 27 20.5 L 28.6 17.8 C 29 17.2 29.6 16.8 30.3 16.8 H 33.7 C 34.4 16.8 35 17.2 35.4 17.8 L 37 20.5 H 27 Z"
+    fill="#ffffff"
+  />
+
+  <!-- Camera Chassis -->
+  <rect x="19.5" y="20.5" width="25" height="16.5" rx="3" fill="#ffffff"/>
+
+  <!-- Camera Lens Outer Cutout -->
+  <circle cx="32" cy="28.8" r="5" fill="url(#pinRed)"/>
+
+  <!-- Camera Lens Inner Dot / Core -->
+  <circle cx="32" cy="28.8" r="2.3" fill="#ffffff"/>
+
+  <!-- Flash LED Dot -->
+  <circle cx="40.5" cy="23.5" r="1.1" fill="url(#pinRed)"/>
+</svg>
