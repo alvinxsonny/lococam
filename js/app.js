@@ -1,11 +1,13 @@
 'use strict';
 
-/* ── Set your Google Maps API key here (optional) ──────────────────────────
-   Without a key: uses Esri World Imagery satellite tiles (free, no account).
-   With a key:    uses Google Maps satellite + Google Static Maps for photos.
-   Get a free key: console.cloud.google.com → APIs & Services → Credentials
+/* ── Google Maps API Key ───────────────────────────────────────────────────
+   Loaded dynamically from js/config.js (gitignored) or localStorage.
+   Template available in js/config.example.js.
    ───────────────────────────────────────────────────────────────────────── */
-const GOOGLE_MAPS_KEY = ''; // ← paste your key here, e.g. 'AIzaSy...'
+const GOOGLE_MAPS_KEY =
+  (typeof window !== 'undefined' && window.LOCOCAM_CONFIG && window.LOCOCAM_CONFIG.GOOGLE_MAPS_KEY) ||
+  (typeof localStorage !== 'undefined' && localStorage.getItem('lococam_gmaps_key')) ||
+  '';
 
 /* ═══════════════════════════════════════════════════
    LocoCam — main application class
@@ -20,6 +22,8 @@ class LocoCam {
     // Map
     this.map         = null;
     this.marker      = null;
+    this.gMap        = null;
+    this.gMarker     = null;
     this.mapLayer    = 'normal'; // 'normal' | 'satellite'
     this.normalLayer = null;
     this.satLayer    = null;
@@ -455,18 +459,66 @@ class LocoCam {
         resolve();
       };
       const s = document.createElement('script');
-      s.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&callback=__gmapsInit&loading=async`;
+      s.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&libraries=places,geocoding&callback=__gmapsInit&loading=async`;
       s.async = true;
-      s.onerror = resolve; // if key is bad, fall back gracefully
+      s.onerror = () => {
+        console.warn('Google Maps JS API load failed, using fallback.');
+        resolve();
+      };
       document.head.appendChild(s);
     });
   }
 
   /* ─────────────────────────────────────────────
-     MAP (Leaflet with Normal & Satellite view support)
+     MAP (Google Maps + Leaflet Fallback with Normal & Satellite view support)
   ───────────────────────────────────────────── */
   _initMap() {
-    if (this.map) return;
+    if (this.map || this.gMap) return;
+
+    // Authentic Google Maps SVG Pin (Proportional teardrop + white dot + soft shadow)
+    const pinSvg = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="38" viewBox="0 0 28 38">
+        <defs>
+          <filter id="shadow" x="-30%" y="-20%" width="160%" height="150%">
+            <feDropShadow dx="0" dy="2" stdDeviation="1.8" flood-color="rgba(0,0,0,0.5)"/>
+          </filter>
+        </defs>
+        <g filter="url(#shadow)">
+          <path d="M14 2 C7.37 2 2 7.37 2 14 C2 23.5 14 34 14 34 S26 23.5 26 14 C26 7.37 20.63 2 14 2 Z" fill="#ea4335" stroke="#ffffff" stroke-width="1.2"/>
+          <circle cx="14" cy="14" r="4.5" fill="#ffffff"/>
+        </g>
+      </svg>
+    `)}`;
+
+    if (this.useGoogleMaps && window.google && window.google.maps) {
+      const isSat = this.mapLayer === 'satellite';
+      try {
+        this.gMap = new google.maps.Map(this.el.mapEl, {
+          center: { lat: 20, lng: 0 },
+          zoom: 17,
+          disableDefaultUI: true,
+          clickableIcons: false,
+          gestureHandling: 'none',
+          keyboardShortcuts: false,
+          mapTypeId: isSat ? google.maps.MapTypeId.HYBRID : google.maps.MapTypeId.ROADMAP
+        });
+
+        this.gMarker = new google.maps.Marker({
+          position: { lat: 20, lng: 0 },
+          map: this.gMap,
+          icon: {
+            url: pinSvg,
+            scaledSize: new google.maps.Size(22, 30),
+            anchor: new google.maps.Point(11, 28)
+          }
+        });
+        return;
+      } catch (err) {
+        console.warn('Error initializing Google Maps, using Leaflet fallback:', err);
+      }
+    }
+
+    if (typeof L === 'undefined') return;
 
     this.map = L.map(this.el.mapEl, {
       zoomControl:        false,
@@ -499,14 +551,20 @@ class LocoCam {
 
     // Classic Google-style red teardrop pin (compact & crisp)
     const pinIcon = L.divIcon({
-      html: `<svg viewBox="0 0 24 36" width="16" height="24" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 24 12 24S24 21 24 12C24 5.373 18.627 0 12 0z"
-              fill="#ea4335" stroke="rgba(0,0,0,0.25)" stroke-width="0.7"/>
-        <circle cx="12" cy="12" r="4.5" fill="white"/>
+      html: `<svg viewBox="0 0 28 38" width="22" height="30" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="lshadow" x="-30%" y="-20%" width="160%" height="150%">
+            <feDropShadow dx="0" dy="2" stdDeviation="1.8" flood-color="rgba(0,0,0,0.5)"/>
+          </filter>
+        </defs>
+        <g filter="url(#lshadow)">
+          <path d="M14 2 C7.37 2 2 7.37 2 14 C2 23.5 14 34 14 34 S26 23.5 26 14 C26 7.37 20.63 2 14 2 Z" fill="#ea4335" stroke="#ffffff" stroke-width="1.2"/>
+          <circle cx="14" cy="14" r="4.5" fill="#ffffff"/>
+        </g>
       </svg>`,
       className:  '',
-      iconSize:   [16, 24],
-      iconAnchor: [8, 24],
+      iconSize:   [22, 30],
+      iconAnchor: [11, 28],
     });
     this.marker = L.marker([20, 0], { icon: pinIcon }).addTo(this.map);
   }
@@ -515,7 +573,9 @@ class LocoCam {
     this.mapLayer = this.mapLayer === 'normal' ? 'satellite' : 'normal';
     const isSat = this.mapLayer === 'satellite';
 
-    if (this.map && this.normalLayer && this.satLayer) {
+    if (this.gMap && window.google && window.google.maps) {
+      this.gMap.setMapTypeId(isSat ? google.maps.MapTypeId.HYBRID : google.maps.MapTypeId.ROADMAP);
+    } else if (this.map && this.normalLayer && this.satLayer) {
       if (isSat) {
         if (this.map.hasLayer(this.normalLayer)) this.map.removeLayer(this.normalLayer);
         this.satLayer.addTo(this.map);
@@ -544,9 +604,16 @@ class LocoCam {
   }
 
   _updateMap(lat, lng) {
-    if (!this.map) return;
-    this.map.setView([lat, lng], 16, { animate: false });
-    this.marker.setLatLng([lat, lng]);
+    if (this.gMap) {
+      this.gMap.setCenter({ lat, lng });
+      this.gMap.setZoom(17);
+      if (this.gMarker) this.gMarker.setPosition({ lat, lng });
+      return;
+    }
+    if (this.map) {
+      this.map.setView([lat, lng], 17, { animate: false });
+      if (this.marker) this.marker.setLatLng([lat, lng]);
+    }
   }
 
   /* ─────────────────────────────────────────────
@@ -588,8 +655,36 @@ class LocoCam {
 
     clearTimeout(this.geocodeTimer);
     this.geocodeTimer = setTimeout(async () => {
+      // 1. Google Maps Geocoder API
+      if (GOOGLE_MAPS_KEY && window.google && window.google.maps && window.google.maps.Geocoder) {
+        try {
+          const geocoder = new google.maps.Geocoder();
+          const res = await geocoder.geocode({ location: { lat, lng } });
+          if (res.results && res.results[0]) {
+            const item = res.results[0];
+            this.addrFull = item.formatted_address;
+
+            let city = '', state = '', country = '';
+            for (const comp of item.address_components) {
+              if (comp.types.includes('locality')) city = comp.long_name;
+              if (!city && (comp.types.includes('sublocality') || comp.types.includes('administrative_area_level_2'))) city = comp.long_name;
+              if (comp.types.includes('administrative_area_level_1')) state = comp.short_name;
+              if (comp.types.includes('country')) country = comp.long_name;
+            }
+
+            this.addrCity = [city, state, country].filter(Boolean).join(', ');
+            this.el.hudAddr.textContent     = this.addrCity || 'Location found';
+            this.el.hudAddrFull.textContent = this.addrFull || 'Precise address unavailable';
+            this.lastGeocoded = { lat, lng };
+            return;
+          }
+        } catch (e) {
+          console.warn('Google Geocoder failed, falling back to OSM:', e);
+        }
+      }
+
+      // 2. OpenStreetMap / Nominatim Fallback
       try {
-        // zoom=18 gives maximum address detail
         const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
         const res  = await fetch(url, { headers: { 'Accept-Language': 'en-US,en' } });
         const json = await res.json();
@@ -625,7 +720,7 @@ class LocoCam {
         this.el.hudAddr.textContent     = fallback;
         this.el.hudAddrFull.textContent = 'Precise address unavailable';
       }
-    }, 600);
+    }, 400);
   }
 
   /** Full datetime string matching reference: "Saturday, 02/05/2026 10:23 AM GMT +05:30" */
@@ -896,17 +991,40 @@ class LocoCam {
     mapCanvas.height = mapSize;
     const mapCtx = mapCanvas.getContext('2d');
     try {
-      await this._drawMapTiles(mapCtx, this.location.lat, this.location.lng, 0, 0, mapSize, mapSize, 16, mapR);
+      await this._drawMapTiles(mapCtx, this.location.lat, this.location.lng, 0, 0, mapSize, mapSize, 17, mapR);
     } catch {}
 
     this._drawHUDDirect(ctx, W, H, mapCanvas);
   }
 
   /**
-   * Composites Map tiles (Normal CartoDB Voyager or Esri World Imagery Satellite) onto ctx.
-   * Uses @2x retina tiles where available and 2px overlap for ultra-high sharpness.
+   * Composites Map tiles (Google Static Maps or CartoDB Voyager / Esri World Imagery) onto ctx.
    */
-  async _drawMapTiles(ctx, lat, lng, mx, my, mw, mh, zoom, cornerRadius = 8) {
+  async _drawMapTiles(ctx, lat, lng, mx, my, mw, mh, zoom = 17, cornerRadius = 8) {
+    const isSat = this.mapLayer === 'satellite';
+
+    // 1. Google Static Maps API for ultra-sharp map burn-in if key is provided
+    if (GOOGLE_MAPS_KEY) {
+      try {
+        const mapType = isSat ? 'hybrid' : 'roadmap';
+        const staticZoom = Math.max(17, zoom);
+        const staticSize = Math.min(320, Math.max(160, Math.round(mw)));
+        const url = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=${staticZoom}&size=${staticSize}x${staticSize}&scale=2&maptype=${mapType}&markers=color:0xea4335%7Csize:mid%7C${lat},${lng}&key=${GOOGLE_MAPS_KEY}`;
+        const img = await this._loadImg(url);
+        if (img) {
+          ctx.save();
+          ctx.beginPath();
+          this._rrect(ctx, mx, my, mw, mh, cornerRadius);
+          ctx.clip();
+          ctx.drawImage(img, mx, my, mw, mh);
+          ctx.restore();
+          return;
+        }
+      } catch (err) {
+        console.warn('Google Static Map fetch failed, falling back to tile renderer:', err);
+      }
+    }
+
     const TS    = 256;
     const scale = Math.pow(2, zoom);
     const latR  = lat * Math.PI / 180;
@@ -925,7 +1043,6 @@ class LocoCam {
     const rY   = Math.ceil(mh / TS) + 2;
 
     const subs = ['a', 'b', 'c', 'd'];
-    const isSat = this.mapLayer === 'satellite';
     const jobs = [];
 
     for (let dy = -rY; dy <= rY; dy++) {
@@ -981,7 +1098,7 @@ class LocoCam {
   /** Draws a classic Google Maps red teardrop pin (properly proportioned, not elongated) */
   _drawRedPin(ctx, cx, cy, mapW = 100) {
     const r     = Math.max(5.5, Math.round(mapW * 0.065));
-    const headY = cy - Math.round(r * 1.8); // center of circle
+    const headY = cy - Math.round(r * 1.55); // center of circle
 
     ctx.save();
     ctx.shadowColor   = 'rgba(0,0,0,0.45)';
@@ -990,12 +1107,15 @@ class LocoCam {
 
     // Teardrop body
     ctx.beginPath();
-    ctx.arc(cx, headY, r, Math.PI, 0, false);            // top semi-circle
-    ctx.quadraticCurveTo(cx + r, headY + r * 0.9, cx, cy); // right curve to tip
-    ctx.quadraticCurveTo(cx - r, headY + r * 0.9, cx - r, headY); // left curve from tip
+    ctx.arc(cx, headY, r, Math.PI, 0, false);
+    ctx.quadraticCurveTo(cx + r, headY + r * 0.95, cx, cy);
+    ctx.quadraticCurveTo(cx - r, headY + r * 0.95, cx - r, headY);
     ctx.closePath();
     ctx.fillStyle = '#ea4335';
     ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = Math.max(1, r * 0.18);
+    ctx.stroke();
 
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
@@ -1003,7 +1123,7 @@ class LocoCam {
     // White center dot
     ctx.beginPath();
     ctx.arc(cx, headY, r * 0.42, 0, Math.PI * 2);
-    ctx.fillStyle = 'white';
+    ctx.fillStyle = '#ffffff';
     ctx.fill();
 
     ctx.restore();

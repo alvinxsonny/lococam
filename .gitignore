@@ -22,3 +22,9 @@ Desktop.ini
 *.swp
 *.swo
 *~
+
+# Secrets & API Keys
+js/config.js
+.env
+.env.*
+*.local

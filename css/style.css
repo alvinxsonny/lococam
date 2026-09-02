@@ -635,9 +635,20 @@ button {
   box-shadow: 0 0 14px rgba(184, 255, 87, 0.16);
 }
 
-/* Hide default Leaflet chrome */
+/* Hide default Leaflet & Google Maps chrome in HUD thumbnail */
 .leaflet-control-zoom,
-.leaflet-control-attribution { display: none !important; }
+.leaflet-control-attribution,
+.gm-style-cc,
+.gmnoprint,
+.gm-bundled-control,
+a[href^="https://maps.google.com/maps"],
+a[href^="https://www.google.com/maps"] {
+  display: none !important;
+}
+
+.gm-style {
+  font-family: inherit !important;
+}
 
 /* ── Middle: Info Section (Clean Unified Flow) ── */
 .hud-info {
