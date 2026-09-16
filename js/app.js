@@ -96,6 +96,9 @@ class LocoCam {
       recTime  : q('rec-time'),
 
       hud            : q('hud'),
+      hudMini        : q('hud-mini'),
+      hudMiniText    : q('hud-mini-text'),
+      btnHudMinimize : q('btn-hud-minimize'),
       mapEl          : q('map-el'),
       btnMapLayer    : q('btn-map-layer'),
       iconLayerNormal: document.querySelector('.icon-layer-normal'),
@@ -105,6 +108,7 @@ class LocoCam {
       hudCoords      : q('hud-coords'),
       hudClock       : q('hud-clock'),
 
+      shutterDock: q('shutter-dock'),
       shutterBtn : q('btn-shutter'),
       btnSnap    : q('btn-snap'),
       btnInfo    : q('btn-info'),
@@ -119,6 +123,8 @@ class LocoCam {
     this.selectedDeviceId = null;
     this.activeDeviceId   = null;
     this.videoDevices     = [];
+    this._mobileMinimizeTimer = null;
+    this._hasInitiallyScheduledMinimize = false;
 
     this._bindEvents();
 
@@ -143,6 +149,18 @@ class LocoCam {
     el.btnModePhoto.addEventListener('click',  () => this._setMode('photo'));
     el.btnModeVideo.addEventListener('click',  () => this._setMode('video'));
     el.btnHud.addEventListener('click',        () => this._toggleHUD());
+    if (el.hudMini) {
+      el.hudMini.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._expandHUD();
+      });
+    }
+    if (el.btnHudMinimize) {
+      el.btnHudMinimize.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._minimizeHUD();
+      });
+    }
     el.shutterBtn.addEventListener('click',    () => this._onShutter());
     el.btnRetake.addEventListener('click',     () => this._retake());
     el.btnSave.addEventListener('click',       () => this._save());
@@ -443,6 +461,42 @@ class LocoCam {
     this.el.btnHud.classList.toggle('dim', !this.hudEnabled);
     this.el.iconEye.classList.toggle('hidden', !this.hudEnabled);
     this.el.iconEyeOff.classList.toggle('hidden', this.hudEnabled);
+
+    if (this.hudEnabled && this._isMobile()) {
+      this._expandHUD();
+    }
+  }
+
+  _isMobile() {
+    return window.innerWidth <= 640 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  }
+
+  _scheduleMobileMinimize(delay = 5000) {
+    clearTimeout(this._mobileMinimizeTimer);
+    if (!this._isMobile()) return;
+    this._mobileMinimizeTimer = setTimeout(() => {
+      this._minimizeHUD();
+    }, delay);
+  }
+
+  _minimizeHUD() {
+    if (!this.hudEnabled) return;
+    this.el.hud.classList.add('minimized');
+    if (this.map) {
+      setTimeout(() => this.map.invalidateSize(), 320);
+    }
+  }
+
+  _expandHUD() {
+    if (!this.hudEnabled) {
+      this._toggleHUD();
+      return;
+    }
+    this.el.hud.classList.remove('minimized');
+    if (this.map) {
+      setTimeout(() => this.map.invalidateSize(), 320);
+    }
+    this._scheduleMobileMinimize(5000);
   }
 
   /* ─────────────────────────────────────────────
@@ -641,9 +695,17 @@ class LocoCam {
     this.el.hudAddr.classList.remove('acquiring');
 
     this.el.hudCoords.textContent = `Lat ${lat.toFixed(6)}\u00b0 Long ${lng.toFixed(6)}\u00b0`;
+    if (this.el.hudMiniText && !this.addrCity) {
+      this.el.hudMiniText.textContent = `${lat.toFixed(4)}\u00b0, ${lng.toFixed(4)}\u00b0`;
+    }
 
     this._updateMap(lat, lng);
     this._geocode(lat, lng);
+
+    if (!this._hasInitiallyScheduledMinimize) {
+      this._hasInitiallyScheduledMinimize = true;
+      this._scheduleMobileMinimize(5000);
+    }
   }
 
   _geocode(lat, lng) {
@@ -675,7 +737,11 @@ class LocoCam {
             this.addrCity = [city, state, country].filter(Boolean).join(', ');
             this.el.hudAddr.textContent     = this.addrCity || 'Location found';
             this.el.hudAddrFull.textContent = this.addrFull || 'Precise address unavailable';
+            if (this.el.hudMiniText) {
+              this.el.hudMiniText.textContent = city || this.addrCity || 'Location found';
+            }
             this.lastGeocoded = { lat, lng };
+            this._scheduleMobileMinimize(5000);
             return;
           }
         } catch (e) {
@@ -712,13 +778,21 @@ class LocoCam {
         // Update live HUD
         this.el.hudAddr.textContent     = this.addrCity;
         this.el.hudAddrFull.textContent = this.addrFull || 'Precise address unavailable';
+        if (this.el.hudMiniText) {
+          this.el.hudMiniText.textContent = city || this.addrCity || 'Location found';
+        }
         this.lastGeocoded = { lat, lng };
+        this._scheduleMobileMinimize(5000);
       } catch {
         const fallback = `${Math.abs(lat).toFixed(4)}\u00b0 ${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lng).toFixed(4)}\u00b0 ${lng >= 0 ? 'E' : 'W'}`;
         this.addrCity = fallback;
         this.addrFull = '';
         this.el.hudAddr.textContent     = fallback;
         this.el.hudAddrFull.textContent = 'Precise address unavailable';
+        if (this.el.hudMiniText) {
+          this.el.hudMiniText.textContent = fallback;
+        }
+        this._scheduleMobileMinimize(5000);
       }
     }, 400);
   }

@@ -539,17 +539,16 @@ button {
 }
 
 /* ══════════════════════════════════════════════
-   HUD CONTAINER (Map + Info + Right-Center Shutter)
+   HUD CONTAINER (Map + Info overlay in Bottom-Left)
 ══════════════════════════════════════════════ */
 .hud {
   position: absolute;
-  bottom: calc(var(--safe-bottom) + 16px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(620px, calc(100% - 24px));
+  bottom: calc(var(--safe-bottom) + 20px);
+  left: 20px;
+  width: auto;
+  max-width: min(480px, calc(100vw - 160px));
   display: flex;
   align-items: center;
-  gap: 11px;
   padding: 10px 14px 10px 10px;
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -558,11 +557,11 @@ button {
   -webkit-backdrop-filter: blur(28px) saturate(1.5);
   box-shadow: 0 16px 44px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08) inset, 0 4px 22px rgba(0, 0, 0, 0.35);
   z-index: 20;
-  transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, border-radius 0.3s ease, padding 0.3s ease, max-width 0.35s ease, background 0.3s ease;
 }
 
 .hud.hud-out {
-  transform: translate(-50%, calc(100% + 28px));
+  transform: translateY(calc(100% + 40px));
   opacity: 0;
   pointer-events: none;
 }
@@ -571,21 +570,21 @@ button {
 .hud-badge {
   position: absolute;
   top: -9px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
   padding: 2.5px 10px 2.5px 8px;
   border-radius: 9999px;
-  background: rgba(22, 24, 30, 0.9);
+  background: rgba(22, 24, 30, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.15);
   backdrop-filter: blur(20px) saturate(1.4);
   -webkit-backdrop-filter: blur(20px) saturate(1.4);
   z-index: 5;
   pointer-events: none;
+  transition: opacity 0.25s ease;
 }
 
 .hud-badge-icon {
@@ -607,11 +606,122 @@ button {
   white-space: nowrap;
 }
 
+/* ── HUD Full Content (Expanded) ── */
+.hud-full-content {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  transition: opacity 0.25s ease;
+}
+
+/* ── HUD Minimized Pill / Chip ── */
+.hud-mini-content {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  width: 100%;
+}
+
+.hud-mini-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(184, 255, 87, 0.15);
+  border: 1px solid rgba(184, 255, 87, 0.35);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.hud-mini-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.hud-mini-text {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
+}
+
+.hud-mini-action {
+  color: rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+.hud-mini-action svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Minimized state active class */
+.hud.minimized {
+  padding: 6px 12px 6px 8px;
+  border-radius: var(--radius-full);
+  max-width: min(230px, calc(100vw - 120px));
+  cursor: pointer;
+  background: rgba(24, 26, 32, 0.9);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.hud.minimized .hud-full-content {
+  display: none;
+}
+.hud.minimized .hud-mini-content {
+  display: flex;
+}
+.hud.minimized .hud-badge {
+  opacity: 0;
+  pointer-events: none;
+}
+.hud.minimized:hover .hud-mini-action {
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+/* ── Minimize Button inside Expanded HUD ── */
+.hud-minimize-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.6);
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 2px;
+  transition: all 0.15s ease;
+}
+.hud-minimize-btn svg {
+  width: 13px;
+  height: 13px;
+}
+.hud-minimize-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+.hud-minimize-btn:active {
+  transform: scale(0.9);
+}
+
 /* ── Map Container with Exact 1:1 Square & Subtle Border ── */
 .hud-map-container {
-  width: 104px;
-  min-width: 104px;
-  height: 104px;
+  width: 100px;
+  min-width: 100px;
+  height: 100px;
   aspect-ratio: 1 / 1;
   border-radius: 14px;
   overflow: hidden;
@@ -661,7 +771,7 @@ a[href^="https://www.google.com/maps"] {
 }
 
 .hud-addr {
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 700;
   color: var(--text-1);
   white-space: nowrap;
@@ -712,35 +822,42 @@ a[href^="https://www.google.com/maps"] {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* ── Right-Center Shutter Dock ── */
-.hud-shutter-dock {
-  flex-shrink: 0;
+/* ══════════════════════════════════════════════
+   SHUTTER DOCK (Centered at Bottom)
+══════════════════════════════════════════════ */
+.shutter-dock {
+  position: absolute;
+  bottom: calc(var(--safe-bottom) + 20px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding-left: 2px;
+  gap: 14px;
+  pointer-events: none;
+}
+
+.shutter-dock > * {
+  pointer-events: auto;
 }
 
 /* Secondary Snapshot Button during Video Recording */
 .snap-btn {
-  width: 38px;
-  height: 38px;
+  width: 0;
+  height: 0;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.22);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1.5px solid rgba(255, 255, 255, 0.8);
+  border: 0 solid rgba(255, 255, 255, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
   cursor: pointer;
   opacity: 0;
-  width: 0;
-  height: 0;
   padding: 0;
-  border-width: 0;
   overflow: hidden;
   pointer-events: none;
   transition: all 0.26s cubic-bezier(0.16, 1, 0.3, 1);
@@ -763,8 +880,8 @@ a[href^="https://www.google.com/maps"] {
 }
 
 #cam-screen.recording .snap-btn {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-width: 1.5px;
   opacity: 1;
   pointer-events: auto;
@@ -772,8 +889,8 @@ a[href^="https://www.google.com/maps"] {
 }
 
 .shutter-btn {
-  width: 62px;
-  height: 62px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   background: transparent;
   border: none;
@@ -782,6 +899,7 @@ a[href^="https://www.google.com/maps"] {
   align-items: center;
   justify-content: center;
   transition: transform 0.15s ease;
+  filter: drop-shadow(0 4px 18px rgba(0, 0, 0, 0.45));
 }
 .shutter-btn:active { transform: scale(0.91); }
 
@@ -789,13 +907,13 @@ a[href^="https://www.google.com/maps"] {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  border: 2.5px solid rgba(255, 255, 255, 0.9);
+  border: 2.5px solid rgba(255, 255, 255, 0.92);
   transition: border-color 0.2s ease;
 }
 
 .shutter-dot {
-  width: 48px;
-  height: 48px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   background: var(--text-1);
   display: block;
@@ -872,4 +990,174 @@ a[href^="https://www.google.com/maps"] {
   background: var(--accent);
   color: var(--bg);
   box-shadow: 0 0 28px rgba(184, 255, 87, 0.3);
+}
+
+/* ══════════════════════════════════════════════
+   RESPONSIVE DESIGN (MOBILE SPECIFIC STYLES)
+══════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  /* ── 1. Scale down all buttons significantly ── */
+  .top-bar {
+    padding: calc(var(--safe-top) + 8px) 10px 12px;
+  }
+
+  .top-left-controls,
+  .top-actions {
+    gap: 5px;
+  }
+
+  .icon-btn {
+    width: 34px;
+    height: 34px;
+  }
+  .icon-btn svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .mode-pill {
+    padding: 2.5px;
+  }
+  .mode-tab {
+    padding: 5px 12px;
+    font-size: 11.5px;
+  }
+
+  .shutter-dock {
+    bottom: calc(var(--safe-bottom) + 14px);
+    gap: 10px;
+  }
+
+  .shutter-btn {
+    width: 52px;
+    height: 52px;
+  }
+  .shutter-ring {
+    border-width: 2px;
+  }
+  .shutter-dot {
+    width: 38px;
+    height: 38px;
+  }
+  #cam-screen.video-mode .shutter-dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+  }
+  #cam-screen.recording .shutter-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 5px;
+  }
+
+  #cam-screen.recording .snap-btn {
+    width: 32px;
+    height: 32px;
+  }
+  .snap-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .glass-window {
+    width: 230px;
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .perm-card {
+    padding: 32px 20px;
+    gap: 12px;
+  }
+  .perm-card h1 {
+    font-size: 28px;
+  }
+  .perm-card p {
+    font-size: 13px;
+  }
+  .btn-primary {
+    padding: 12px 32px;
+    font-size: 13.5px;
+  }
+
+  .prev-bar {
+    padding: 12px;
+    padding-bottom: calc(12px + var(--safe-bottom));
+  }
+  .prev-btn {
+    padding: 12px;
+    font-size: 13.5px;
+    border-radius: 12px;
+  }
+
+  /* ── 2. Mobile Location Container Layout & Auto-Minimize ── */
+  .hud {
+    bottom: calc(var(--safe-bottom) + 76px);
+    left: 10px;
+    right: 10px;
+    width: auto;
+    max-width: min(390px, calc(100vw - 20px));
+    padding: 8px 10px 8px 8px;
+    border-radius: 16px;
+  }
+
+  .hud-badge {
+    top: -8px;
+    left: 16px;
+    padding: 2px 8px;
+  }
+  .hud-badge-text {
+    font-size: 8.5px;
+  }
+
+  .hud-map-container {
+    width: 80px;
+    min-width: 80px;
+    height: 80px;
+    border-radius: 10px;
+  }
+
+  .hud-addr {
+    font-size: 13.5px;
+  }
+  .hud-addr-full {
+    font-size: 10px;
+    -webkit-line-clamp: 2;
+  }
+  .hud-coords {
+    font-size: 9px;
+  }
+  .hud-clock {
+    font-size: 8.5px;
+  }
+
+  /* Mobile Minimized State: Sleek bottom-left corner pill */
+  .hud.minimized {
+    bottom: calc(var(--safe-bottom) + 14px);
+    left: 10px;
+    right: auto;
+    width: auto;
+    max-width: calc(50% - 38px);
+    padding: 5px 10px 5px 6px;
+    border-radius: 9999px;
+    background: rgba(22, 24, 30, 0.92);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  }
+
+  .hud.minimized .hud-mini-icon {
+    width: 22px;
+    height: 22px;
+  }
+  .hud.minimized .hud-mini-icon svg {
+    width: 12px;
+    height: 12px;
+  }
+  .hud.minimized .hud-mini-text {
+    font-size: 11px;
+    max-width: 76px;
+  }
+  .hud.minimized .hud-mini-action svg {
+    width: 12px;
+    height: 12px;
+  }
 }
