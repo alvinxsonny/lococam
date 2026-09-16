@@ -14,10 +14,11 @@ const GOOGLE_MAPS_KEY =
 ═══════════════════════════════════════════════════ */
 class LocoCam {
   constructor() {
-    // Camera
+    // Camera (default to user / mirror front camera)
     this.stream      = null;
-    this.facingMode  = 'environment';
+    this.facingMode  = 'user';
     this.isCameraOn  = true;
+    this.isMirrored  = true;
 
     // Map
     this.map         = null;
@@ -329,7 +330,8 @@ class LocoCam {
 
       // Check facing mode for mirror effect
       const facing = settings.facingMode || (activeTrack.label.toLowerCase().includes('front') || activeTrack.label.toLowerCase().includes('user') ? 'user' : this.facingMode);
-      this.el.video.style.transform = facing === 'user' ? 'scaleX(-1)' : '';
+      this.isMirrored = (facing === 'user');
+      this.el.video.style.transform = this.isMirrored ? 'scaleX(-1)' : '';
     }
 
     return new Promise(resolve => {
@@ -914,7 +916,15 @@ class LocoCam {
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
-    ctx.drawImage(video, 0, 0, W, H);
+    // Draw video frame (mirrored if front/user camera)
+    if (this.isMirrored) {
+      ctx.save();
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, -W, 0, W, H);
+      ctx.restore();
+    } else {
+      ctx.drawImage(video, 0, 0, W, H);
+    }
 
     if (this.hudEnabled && this.location) {
       await this._burnHUD(ctx, W, H);
@@ -1318,7 +1328,14 @@ class LocoCam {
 
       const renderFrame = () => {
         if (!this.isRecording) return;
-        recCtx.drawImage(video, 0, 0, W, H);
+        if (this.isMirrored) {
+          recCtx.save();
+          recCtx.scale(-1, 1);
+          recCtx.drawImage(video, -W, 0, W, H);
+          recCtx.restore();
+        } else {
+          recCtx.drawImage(video, 0, 0, W, H);
+        }
         if (this.hudEnabled && this.location) {
           this._drawHUDDirect(recCtx, W, H, this._cachedMapCanvas);
         }
