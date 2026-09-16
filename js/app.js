@@ -468,7 +468,11 @@ class LocoCam {
   }
 
   _isMobile() {
-    return window.innerWidth <= 640 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    return (
+      Math.min(window.innerWidth, window.innerHeight) <= 640 ||
+      window.innerHeight <= 520 ||
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    );
   }
 
   _scheduleMobileMinimize(delay = 5000) {
@@ -868,8 +872,11 @@ class LocoCam {
       await this._burnHUD(ctx, W, H);
     }
 
-    // Auto-download immediately in high-quality (0.98 quality)
-    this._download(canvas.toDataURL('image/jpeg', 0.98), `LocoCam_${this._timestamp()}.jpg`);
+    // Auto-download directly as Blob (prevents iOS Safari data URI confirmation prompts)
+    canvas.toBlob(blob => {
+      if (!blob) return;
+      this._download(blob, `LocoCam_${this._timestamp()}.jpg`);
+    }, 'image/jpeg', 0.98);
   }
 
   /* ─────────────────────────────────────────────
@@ -1512,11 +1519,56 @@ class LocoCam {
     return y;
   }
 
-  _download(url, filename) {
+  _download(target, filename) {
+    let url = '';
+    let isCreatedBlobUrl = false;
+
+    if (target instanceof Blob || target instanceof File) {
+      url = URL.createObjectURL(target);
+      isCreatedBlobUrl = true;
+    } else if (typeof target === 'string') {
+      if (target.startsWith('data:')) {
+        try {
+          const blob = this._dataURItoBlob(target);
+          url = URL.createObjectURL(blob);
+          isCreatedBlobUrl = true;
+        } catch {
+          url = target;
+        }
+      } else {
+        url = target;
+      }
+    }
+
     const a = document.createElement('a');
+    a.style.display = 'none';
     a.href = url;
     a.download = filename;
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+
+    // Direct trigger
     a.click();
+
+    setTimeout(() => {
+      if (document.body.contains(a)) {
+        document.body.removeChild(a);
+      }
+      if (isCreatedBlobUrl) {
+        URL.revokeObjectURL(url);
+      }
+    }, 4000);
+  }
+
+  _dataURItoBlob(dataURI) {
+    const byteString = atob(dataURI.split(',')[1]);
+    const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    return new Blob([ab], { type: mimeString });
   }
 
   _timestamp() {
