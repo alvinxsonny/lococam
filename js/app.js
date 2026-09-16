@@ -1645,7 +1645,7 @@ class LocoCam {
       el.btnTrayDownloadAll.disabled = count === 0;
     }
     if (el.btnTrayDlText) {
-      el.btnTrayDlText.textContent = count > 0 ? `Download All (${count})` : 'Download All (ZIP)';
+      el.btnTrayDlText.textContent = count > 0 ? `Download All (${count})` : 'Download All';
     }
 
     // Re-render list if modal is currently open
@@ -1705,7 +1705,7 @@ class LocoCam {
           <div class="tray-item-meta">${item.time} &bull; ${item.size}</div>
         </div>
         <div class="tray-item-actions">
-          <button class="tray-action-btn btn-dl" data-id="${item.id}" title="Download ${item.type}">
+          <button class="tray-action-btn btn-dl" data-id="${item.id}" title="Download & Save ${item.type}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="7 10 12 15 17 10"/>
@@ -1744,6 +1744,8 @@ class LocoCam {
     const item = this.captures.find(c => c.id === id);
     if (!item) return;
     this._download(item.blob, item.filename);
+    // Automatically clear downloaded item from tray
+    this._removeCapture(id);
   }
 
   _removeCapture(id) {
@@ -1760,42 +1762,22 @@ class LocoCam {
   async _downloadAllCaptures() {
     if (this.captures.length === 0) return;
     const { el } = this;
+    const itemsToDownload = [...this.captures];
 
-    // Single item download
-    if (this.captures.length === 1) {
-      this._downloadSingleCapture(this.captures[0].id);
-      return;
-    }
+    if (el.btnTrayDlText) el.btnTrayDlText.textContent = 'Downloading…';
+    if (el.btnTrayDownloadAll) el.btnTrayDownloadAll.disabled = true;
 
-    if (window.JSZip) {
-      if (el.btnTrayDlText) el.btnTrayDlText.textContent = 'Packaging ZIP…';
-      if (el.btnTrayDownloadAll) el.btnTrayDownloadAll.disabled = true;
-
-      try {
-        const zip = new JSZip();
-        this.captures.forEach(item => {
-          zip.file(item.filename, item.blob);
-        });
-
-        const zipBlob = await zip.generateAsync({ type: 'blob' });
-        this._download(zipBlob, `LocoCam_Captures_${this._timestamp()}.zip`);
-      } catch (err) {
-        console.error('JSZip error, falling back to sequential download:', err);
-        for (const item of this.captures) {
-          this._download(item.blob, item.filename);
-          await this._sleep(350);
-        }
-      } finally {
-        if (el.btnTrayDlText) el.btnTrayDlText.textContent = `Download All (${this.captures.length})`;
-        if (el.btnTrayDownloadAll) el.btnTrayDownloadAll.disabled = false;
-      }
-    } else {
-      // Sequential download fallback
-      for (const item of this.captures) {
-        this._download(item.blob, item.filename);
+    for (let i = 0; i < itemsToDownload.length; i++) {
+      const item = itemsToDownload[i];
+      this._download(item.blob, item.filename);
+      if (i < itemsToDownload.length - 1) {
         await this._sleep(350);
       }
     }
+
+    // Automatically clear the tray after downloading all
+    this._clearTray();
+    this._toggleTray(false);
   }
 
   _formatFileSize(bytes) {
