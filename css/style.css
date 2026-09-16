@@ -1507,12 +1507,14 @@ a[href^="https://www.google.com/maps"] {
   }
   .tray-modal {
     padding: 0;
+    align-items: flex-end;
+    justify-content: center;
   }
   .tray-sheet {
     width: 100%;
     border-radius: 20px 20px 0 0;
-    max-height: 75dvh;
-    padding: 14px;
+    max-height: 78dvh;
+    padding: 16px 16px calc(16px + var(--safe-bottom));
   }
 }
 
