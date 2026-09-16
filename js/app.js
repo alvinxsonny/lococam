@@ -1757,11 +1757,30 @@ class LocoCam {
     });
   }
 
-  _downloadSingleCapture(id) {
+  async _downloadSingleCapture(id) {
     const item = this.captures.find(c => c.id === id);
     if (!item) return;
+
+    const mimeType = item.blob.type || (item.type === 'video' ? 'video/mp4' : 'image/jpeg');
+    const file = new File([item.blob], item.filename, { type: mimeType });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: item.filename
+        });
+        this._removeCapture(id);
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          return;
+        }
+      }
+    }
+
+    // Direct download fallback
     this._download(item.blob, item.filename);
-    // Automatically clear downloaded item from tray
     this._removeCapture(id);
   }
 
@@ -1781,20 +1800,52 @@ class LocoCam {
     const { el } = this;
     const itemsToDownload = [...this.captures];
 
-    if (el.btnTrayDlText) el.btnTrayDlText.textContent = 'Downloading…';
+    if (el.btnTrayDlText) el.btnTrayDlText.textContent = 'Saving…';
     if (el.btnTrayDownloadAll) el.btnTrayDownloadAll.disabled = true;
 
-    for (let i = 0; i < itemsToDownload.length; i++) {
-      const item = itemsToDownload[i];
-      this._download(item.blob, item.filename);
-      if (i < itemsToDownload.length - 1) {
-        await this._sleep(350);
+    try {
+      const files = itemsToDownload.map(item => {
+        const mimeType = item.blob.type || (item.type === 'video' ? 'video/mp4' : 'image/jpeg');
+        return new File([item.blob], item.filename, { type: mimeType });
+      });
+
+      // Try native Web Share API (opens iOS Share Sheet with "Save N Images" directly to Camera Roll)
+      if (navigator.canShare && navigator.canShare({ files })) {
+        try {
+          await navigator.share({
+            files,
+            title: 'LocoCam Captures'
+          });
+          this._clearTray();
+          this._toggleTray(false);
+          return;
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            return;
+          }
+        }
+      }
+
+      // Fallback: sequential programmatic downloads for desktop / unsupported browsers
+      for (let i = 0; i < itemsToDownload.length; i++) {
+        const item = itemsToDownload[i];
+        this._download(item.blob, item.filename);
+        if (i < itemsToDownload.length - 1) {
+          await this._sleep(350);
+        }
+      }
+
+      this._clearTray();
+      this._toggleTray(false);
+    } finally {
+      if (el.btnTrayDlText) {
+        const count = this.captures.length;
+        el.btnTrayDlText.textContent = count > 0 ? `Download All (${count})` : 'Download All';
+      }
+      if (el.btnTrayDownloadAll) {
+        el.btnTrayDownloadAll.disabled = this.captures.length === 0;
       }
     }
-
-    // Automatically clear the tray after downloading all
-    this._clearTray();
-    this._toggleTray(false);
   }
 
   _formatFileSize(bytes) {
