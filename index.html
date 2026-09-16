@@ -310,6 +310,57 @@
             <span class="shutter-dot" aria-hidden="true"></span>
           </button>
         </div>
+
+        <!-- Bottom-Right Captures Tray Button -->
+        <div class="tray-btn-wrapper">
+          <button id="btn-tray" class="tray-btn" aria-label="View captures queue" title="View captures">
+            <div id="tray-thumb" class="tray-thumb">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="4" ry="4"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+            </div>
+            <span id="tray-badge" class="tray-badge hidden">0</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Captures Tray Drawer / Modal -->
+      <div id="tray-modal" class="tray-modal hidden" aria-hidden="true">
+        <div class="tray-backdrop" id="tray-backdrop"></div>
+        <div class="tray-sheet glass-window">
+          <div class="tray-sheet-header">
+            <div class="tray-sheet-title-group">
+              <h3 class="tray-sheet-title">Captured Media</h3>
+              <span id="tray-count-pill" class="glass-pill-badge">0 items</span>
+            </div>
+            <div class="tray-header-actions">
+              <button id="btn-tray-clear" class="tray-text-btn" title="Clear all captures">Clear</button>
+              <button id="btn-tray-close" class="tray-close-btn" aria-label="Close tray">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div id="tray-list" class="tray-list">
+            <!-- Dynamic items injected here -->
+          </div>
+
+          <div class="tray-sheet-footer">
+            <button id="btn-tray-download-all" class="btn-primary tray-dl-all-btn" disabled>
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              <span id="btn-tray-dl-text">Download All (ZIP)</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Preview Screen -->
@@ -332,6 +383,7 @@
       </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="api/config.js"></script>
     <script src="js/config.js"></script>

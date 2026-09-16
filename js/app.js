@@ -114,6 +114,18 @@ class LocoCam {
       btnInfo    : q('btn-info'),
       infoPopover: q('info-popover'),
 
+      btnTray           : q('btn-tray'),
+      trayThumb         : q('tray-thumb'),
+      trayBadge         : q('tray-badge'),
+      trayModal         : q('tray-modal'),
+      trayBackdrop      : q('tray-backdrop'),
+      trayClose         : q('btn-tray-close'),
+      trayClear         : q('btn-tray-clear'),
+      trayCountPill     : q('tray-count-pill'),
+      trayList          : q('tray-list'),
+      btnTrayDownloadAll: q('btn-tray-download-all'),
+      btnTrayDlText     : q('btn-tray-dl-text'),
+
       prevImg    : q('prev-img'),
       prevVid    : q('prev-vid'),
       btnRetake  : q('btn-retake'),
@@ -123,6 +135,7 @@ class LocoCam {
     this.selectedDeviceId = null;
     this.activeDeviceId   = null;
     this.videoDevices     = [];
+    this.captures         = [];
     this._mobileMinimizeTimer = null;
     this._hasInitiallyScheduledMinimize = false;
 
@@ -165,6 +178,23 @@ class LocoCam {
     el.btnRetake.addEventListener('click',     () => this._retake());
     el.btnSave.addEventListener('click',       () => this._save());
     el.video.addEventListener('click',         e  => this._onTap(e));
+
+    // Media Captures Tray & Drawer
+    if (el.btnTray) {
+      el.btnTray.addEventListener('click', () => this._toggleTray(true));
+    }
+    if (el.trayClose) {
+      el.trayClose.addEventListener('click', () => this._toggleTray(false));
+    }
+    if (el.trayBackdrop) {
+      el.trayBackdrop.addEventListener('click', () => this._toggleTray(false));
+    }
+    if (el.trayClear) {
+      el.trayClear.addEventListener('click', () => this._clearTray());
+    }
+    if (el.btnTrayDownloadAll) {
+      el.btnTrayDownloadAll.addEventListener('click', () => this._downloadAllCaptures());
+    }
 
     // Secondary Snapshot Button (capture photo during video recording)
     if (el.btnSnap) {
@@ -832,13 +862,31 @@ class LocoCam {
     if (this.mode === 'photo') {
       this._capturePhoto();
     } else if (this.isRecording) {
-      // Stop recording and auto-download as MP4
+      // Capture poster thumbnail for video
+      const W = this.el.video.videoWidth || 640;
+      const H = this.el.video.videoHeight || 480;
+      const thumbCanvas = document.createElement('canvas');
+      thumbCanvas.width = 120;
+      thumbCanvas.height = Math.max(70, Math.round(120 * (H / W)));
+      const tctx = thumbCanvas.getContext('2d');
+      tctx.drawImage(this.el.video, 0, 0, thumbCanvas.width, thumbCanvas.height);
+      const thumbUrl = thumbCanvas.toDataURL('image/jpeg', 0.4);
+      const filename = `LocoCam_${this._timestamp()}.mp4`;
+      const timeStr  = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      // Stop recording and queue to tray
       this._stopRecording().then(blob => {
         if (!blob) return;
         const mp4Blob = new Blob([blob], { type: 'video/mp4' });
-        const url = URL.createObjectURL(mp4Blob);
-        this._download(url, `LocoCam_${this._timestamp()}.mp4`);
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        this._addCapture({
+          id: 'cap_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          type: 'video',
+          blob: mp4Blob,
+          thumbUrl,
+          filename,
+          time: timeStr,
+          size: this._formatFileSize(mp4Blob.size)
+        });
       });
     } else {
       this._startRecording();
@@ -846,7 +894,7 @@ class LocoCam {
   }
 
   /* ─────────────────────────────────────────────
-     PHOTO CAPTURE — auto-download in High Quality
+     PHOTO CAPTURE — Queue directly to Tray
   ───────────────────────────────────────────── */
   async _capturePhoto() {
     if (!this.isCameraOn) return;
@@ -872,8 +920,22 @@ class LocoCam {
       await this._burnHUD(ctx, W, H);
     }
 
-    // Auto-download immediately in high-quality (0.98 quality)
-    this._download(canvas.toDataURL('image/jpeg', 0.98), `LocoCam_${this._timestamp()}.jpg`);
+    const thumbUrl = canvas.toDataURL('image/jpeg', 0.35);
+    const filename = `LocoCam_${this._timestamp()}.jpg`;
+    const timeStr  = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    canvas.toBlob(blob => {
+      if (!blob) return;
+      this._addCapture({
+        id: 'cap_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        type: 'photo',
+        blob,
+        thumbUrl,
+        filename,
+        time: timeStr,
+        size: this._formatFileSize(blob.size)
+      });
+    }, 'image/jpeg', 0.98);
   }
 
   /* ─────────────────────────────────────────────
@@ -1350,13 +1412,28 @@ class LocoCam {
   }
 
   _save() {
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     if (this.capturedType === 'photo') {
-      this._download(this.capturedURL, `LocoCam_${this._timestamp()}.jpg`);
+      this._addCapture({
+        id: 'cap_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        type: 'photo',
+        blob: this.capturedBlob,
+        thumbUrl: this.capturedURL,
+        filename: `LocoCam_${this._timestamp()}.jpg`,
+        time: timeStr,
+        size: this._formatFileSize(this.capturedBlob ? this.capturedBlob.size : 0)
+      });
     } else {
       const mp4Blob = new Blob([this.capturedBlob], { type: 'video/mp4' });
-      const url = URL.createObjectURL(mp4Blob);
-      this._download(url, `LocoCam_${this._timestamp()}.mp4`);
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      this._addCapture({
+        id: 'cap_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        type: 'video',
+        blob: mp4Blob,
+        thumbUrl: '',
+        filename: `LocoCam_${this._timestamp()}.mp4`,
+        time: timeStr,
+        size: this._formatFileSize(mp4Blob.size)
+      });
     }
     this._retake();
   }
@@ -1516,11 +1593,239 @@ class LocoCam {
     return y;
   }
 
-  _download(url, filename) {
+  /* ─────────────────────────────────────────────
+     CAPTURES TRAY & BATCH DOWNLOAD
+  ───────────────────────────────────────────── */
+  _addCapture(item) {
+    this.captures.unshift(item); // Newest first
+    this._updateTrayUI();
+  }
+
+  _updateTrayUI() {
+    const { el } = this;
+    const count = this.captures.length;
+
+    // Update badge counter
+    if (el.trayBadge) {
+      el.trayBadge.textContent = count;
+      if (count > 0) {
+        el.trayBadge.classList.remove('hidden');
+        el.trayBadge.classList.remove('pop');
+        void el.trayBadge.offsetWidth;
+        el.trayBadge.classList.add('pop');
+      } else {
+        el.trayBadge.classList.add('hidden');
+      }
+    }
+
+    // Update tray button thumbnail
+    if (el.trayThumb) {
+      if (count > 0 && this.captures[0].thumbUrl) {
+        el.trayThumb.style.backgroundImage = `url(${this.captures[0].thumbUrl})`;
+        el.trayThumb.innerHTML = '';
+      } else {
+        el.trayThumb.style.backgroundImage = 'none';
+        el.trayThumb.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="4" ry="4"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+        `;
+      }
+    }
+
+    // Update count pill in modal
+    if (el.trayCountPill) {
+      el.trayCountPill.textContent = `${count} item${count === 1 ? '' : 's'}`;
+    }
+
+    // Update download all button state
+    if (el.btnTrayDownloadAll) {
+      el.btnTrayDownloadAll.disabled = count === 0;
+    }
+    if (el.btnTrayDlText) {
+      el.btnTrayDlText.textContent = count > 0 ? `Download All (${count})` : 'Download All (ZIP)';
+    }
+
+    // Re-render list if modal is currently open
+    if (el.trayModal && !el.trayModal.classList.contains('hidden')) {
+      this._renderTrayList();
+    }
+  }
+
+  _toggleTray(show) {
+    const { el } = this;
+    if (!el.trayModal) return;
+    const isOpen = !el.trayModal.classList.contains('hidden');
+    const target = show !== undefined ? show : !isOpen;
+
+    if (target) {
+      el.trayModal.classList.remove('hidden');
+      el.trayModal.setAttribute('aria-hidden', 'false');
+      this._renderTrayList();
+    } else {
+      el.trayModal.classList.add('hidden');
+      el.trayModal.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  _renderTrayList() {
+    const { el } = this;
+    if (!el.trayList) return;
+
+    if (this.captures.length === 0) {
+      el.trayList.innerHTML = `
+        <div class="tray-empty-state">
+          <div class="tray-empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="4" ry="4"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+          </div>
+          <p class="tray-empty-text">No captures yet.<br>Photos and videos will appear here.</p>
+        </div>
+      `;
+      return;
+    }
+
+    el.trayList.innerHTML = this.captures.map((item, idx) => `
+      <div class="tray-item" data-id="${item.id}">
+        <div class="tray-item-thumb-box">
+          <img src="${item.thumbUrl || ''}" alt="${item.filename}" class="tray-item-img"/>
+          ${item.type === 'video' ? `
+            <div class="tray-item-video-tag">
+              <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </div>
+          ` : ''}
+        </div>
+        <div class="tray-item-info">
+          <div class="tray-item-title">${item.type === 'video' ? 'Video' : 'Photo'} #${this.captures.length - idx}</div>
+          <div class="tray-item-meta">${item.time} &bull; ${item.size}</div>
+        </div>
+        <div class="tray-item-actions">
+          <button class="tray-action-btn btn-dl" data-id="${item.id}" title="Download ${item.type}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </button>
+          <button class="tray-action-btn btn-del" data-id="${item.id}" title="Delete">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    `).join('');
+
+    // Attach click events to dynamic list buttons
+    el.trayList.querySelectorAll('.btn-dl').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-id');
+        this._downloadSingleCapture(id);
+      });
+    });
+
+    el.trayList.querySelectorAll('.btn-del').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-id');
+        this._removeCapture(id);
+      });
+    });
+  }
+
+  _downloadSingleCapture(id) {
+    const item = this.captures.find(c => c.id === id);
+    if (!item) return;
+    this._download(item.blob, item.filename);
+  }
+
+  _removeCapture(id) {
+    this.captures = this.captures.filter(c => c.id !== id);
+    this._updateTrayUI();
+  }
+
+  _clearTray() {
+    if (this.captures.length === 0) return;
+    this.captures = [];
+    this._updateTrayUI();
+  }
+
+  async _downloadAllCaptures() {
+    if (this.captures.length === 0) return;
+    const { el } = this;
+
+    // Single item download
+    if (this.captures.length === 1) {
+      this._downloadSingleCapture(this.captures[0].id);
+      return;
+    }
+
+    if (window.JSZip) {
+      if (el.btnTrayDlText) el.btnTrayDlText.textContent = 'Packaging ZIP…';
+      if (el.btnTrayDownloadAll) el.btnTrayDownloadAll.disabled = true;
+
+      try {
+        const zip = new JSZip();
+        this.captures.forEach(item => {
+          zip.file(item.filename, item.blob);
+        });
+
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        this._download(zipBlob, `LocoCam_Captures_${this._timestamp()}.zip`);
+      } catch (err) {
+        console.error('JSZip error, falling back to sequential download:', err);
+        for (const item of this.captures) {
+          this._download(item.blob, item.filename);
+          await this._sleep(350);
+        }
+      } finally {
+        if (el.btnTrayDlText) el.btnTrayDlText.textContent = `Download All (${this.captures.length})`;
+        if (el.btnTrayDownloadAll) el.btnTrayDownloadAll.disabled = false;
+      }
+    } else {
+      // Sequential download fallback
+      for (const item of this.captures) {
+        this._download(item.blob, item.filename);
+        await this._sleep(350);
+      }
+    }
+  }
+
+  _formatFileSize(bytes) {
+    if (!bytes || bytes <= 0) return '0 B';
+    if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+    return (bytes / 1024).toFixed(0) + ' KB';
+  }
+
+  _download(target, filename) {
+    let url = '';
+    let isBlobUrl = false;
+
+    if (target instanceof Blob || target instanceof File) {
+      url = URL.createObjectURL(target);
+      isBlobUrl = true;
+    } else if (typeof target === 'string') {
+      url = target;
+    }
+
     const a = document.createElement('a');
+    a.style.display = 'none';
     a.href = url;
     a.download = filename;
+    document.body.appendChild(a);
     a.click();
+
+    setTimeout(() => {
+      if (document.body.contains(a)) document.body.removeChild(a);
+      if (isBlobUrl) URL.revokeObjectURL(url);
+    }, 6000);
   }
 
   _timestamp() {
@@ -1534,3 +1839,4 @@ class LocoCam {
 
 /* ── Boot ── */
 window.addEventListener('DOMContentLoaded', () => new LocoCam());
+
