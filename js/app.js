@@ -1,13 +1,6 @@
 'use strict';
 
-/* ── Google Maps API Key ───────────────────────────────────────────────────
-   Loaded dynamically from js/config.js (gitignored) or localStorage.
-   Template available in js/config.example.js.
-   ───────────────────────────────────────────────────────────────────────── */
-const GOOGLE_MAPS_KEY =
-  (typeof window !== 'undefined' && window.LOCOCAM_CONFIG && window.LOCOCAM_CONFIG.GOOGLE_MAPS_KEY) ||
-  (typeof localStorage !== 'undefined' && localStorage.getItem('lococam_gmaps_key')) ||
-  '';
+/* ── Free Mapping Engine: Leaflet + OpenStreetMap / CartoDB / Esri ────────── */
 
 /* ═══════════════════════════════════════════════════
    LocoCam — main application class
@@ -20,11 +13,9 @@ class LocoCam {
     this.isCameraOn  = true;
     this.isMirrored  = true;
 
-    // Map
+    // Map (Free Leaflet Engine)
     this.map         = null;
     this.marker      = null;
-    this.gMap        = null;
-    this.gMarker     = null;
     this.mapLayer    = 'normal'; // 'normal' | 'satellite'
     this.normalLayer = null;
     this.satLayer    = null;
@@ -53,8 +44,6 @@ class LocoCam {
     this.capturedType = null;
     this.capturedURL  = null;
     this.capturedBlob = null;
-
-    this.useGoogleMaps = false; // true once Google Maps JS API is loaded
 
     this._init();
   }
@@ -146,8 +135,8 @@ class LocoCam {
     this._updateClock();
     setInterval(() => this._updateClock(), 1000);
 
-    // Load Google Maps JS API if a key is provided, then start the app
-    this._loadGoogleMaps().finally(() => this._tryStart());
+    // Start the app directly
+    this._tryStart();
   }
 
   _bindEvents() {
@@ -539,75 +528,10 @@ class LocoCam {
      MAP
   ───────────────────────────────────────────── */
   /* ─────────────────────────────────────────────
-     GOOGLE MAPS LOADER
-  ───────────────────────────────────────────── */
-  _loadGoogleMaps() {
-    if (!GOOGLE_MAPS_KEY) return Promise.resolve();
-    return new Promise(resolve => {
-      window.__gmapsInit = () => {
-        this.useGoogleMaps = true;
-        resolve();
-      };
-      const s = document.createElement('script');
-      s.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&libraries=places,geocoding&callback=__gmapsInit&loading=async`;
-      s.async = true;
-      s.onerror = () => {
-        console.warn('Google Maps JS API load failed, using fallback.');
-        resolve();
-      };
-      document.head.appendChild(s);
-    });
-  }
-
-  /* ─────────────────────────────────────────────
-     MAP (Google Maps + Leaflet Fallback with Normal & Satellite view support)
+     MAP (Leaflet Engine: CartoDB Voyager & Esri Satellite)
   ───────────────────────────────────────────── */
   _initMap() {
-    if (this.map || this.gMap) return;
-
-    // Authentic Google Maps SVG Pin (Proportional teardrop + white dot + soft shadow)
-    const pinSvg = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="38" viewBox="0 0 28 38">
-        <defs>
-          <filter id="shadow" x="-30%" y="-20%" width="160%" height="150%">
-            <feDropShadow dx="0" dy="2" stdDeviation="1.8" flood-color="rgba(0,0,0,0.5)"/>
-          </filter>
-        </defs>
-        <g filter="url(#shadow)">
-          <path d="M14 2 C7.37 2 2 7.37 2 14 C2 23.5 14 34 14 34 S26 23.5 26 14 C26 7.37 20.63 2 14 2 Z" fill="#ea4335" stroke="#ffffff" stroke-width="1.2"/>
-          <circle cx="14" cy="14" r="4.5" fill="#ffffff"/>
-        </g>
-      </svg>
-    `)}`;
-
-    if (this.useGoogleMaps && window.google && window.google.maps) {
-      const isSat = this.mapLayer === 'satellite';
-      try {
-        this.gMap = new google.maps.Map(this.el.mapEl, {
-          center: { lat: 20, lng: 0 },
-          zoom: 17,
-          disableDefaultUI: true,
-          clickableIcons: false,
-          gestureHandling: 'none',
-          keyboardShortcuts: false,
-          mapTypeId: isSat ? google.maps.MapTypeId.HYBRID : google.maps.MapTypeId.ROADMAP
-        });
-
-        this.gMarker = new google.maps.Marker({
-          position: { lat: 20, lng: 0 },
-          map: this.gMap,
-          icon: {
-            url: pinSvg,
-            scaledSize: new google.maps.Size(22, 30),
-            anchor: new google.maps.Point(11, 28)
-          }
-        });
-        return;
-      } catch (err) {
-        console.warn('Error initializing Google Maps, using Leaflet fallback:', err);
-      }
-    }
-
+    if (this.map) return;
     if (typeof L === 'undefined') return;
 
     this.map = L.map(this.el.mapEl, {
@@ -621,7 +545,7 @@ class LocoCam {
       tap:                false,
     }).setView([20, 0], 2);
 
-    // Normal road layer: CartoDB Voyager
+    // Normal road layer: CartoDB Voyager (clean OpenStreetMap-based tiles)
     this.normalLayer = L.tileLayer(
       'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
       { maxZoom: 20, crossOrigin: true, subdomains: 'abcd' }
@@ -639,7 +563,7 @@ class LocoCam {
       this.normalLayer.addTo(this.map);
     }
 
-    // Classic Google-style red teardrop pin (compact & crisp)
+    // Classic crisp red teardrop pin
     const pinIcon = L.divIcon({
       html: `<svg viewBox="0 0 28 38" width="22" height="30" xmlns="http://www.w3.org/2000/svg">
         <defs>
@@ -663,9 +587,7 @@ class LocoCam {
     this.mapLayer = this.mapLayer === 'normal' ? 'satellite' : 'normal';
     const isSat = this.mapLayer === 'satellite';
 
-    if (this.gMap && window.google && window.google.maps) {
-      this.gMap.setMapTypeId(isSat ? google.maps.MapTypeId.HYBRID : google.maps.MapTypeId.ROADMAP);
-    } else if (this.map && this.normalLayer && this.satLayer) {
+    if (this.map && this.normalLayer && this.satLayer) {
       if (isSat) {
         if (this.map.hasLayer(this.normalLayer)) this.map.removeLayer(this.normalLayer);
         this.satLayer.addTo(this.map);
@@ -694,12 +616,6 @@ class LocoCam {
   }
 
   _updateMap(lat, lng) {
-    if (this.gMap) {
-      this.gMap.setCenter({ lat, lng });
-      this.gMap.setZoom(17);
-      if (this.gMarker) this.gMarker.setPosition({ lat, lng });
-      return;
-    }
     if (this.map) {
       this.map.setView([lat, lng], 17, { animate: false });
       if (this.marker) this.marker.setLatLng([lat, lng]);
@@ -753,46 +669,14 @@ class LocoCam {
 
     clearTimeout(this.geocodeTimer);
     this.geocodeTimer = setTimeout(async () => {
-      // 1. Google Maps Geocoder API
-      if (GOOGLE_MAPS_KEY && window.google && window.google.maps && window.google.maps.Geocoder) {
-        try {
-          const geocoder = new google.maps.Geocoder();
-          const res = await geocoder.geocode({ location: { lat, lng } });
-          if (res.results && res.results[0]) {
-            const item = res.results[0];
-            this.addrFull = item.formatted_address;
-
-            let city = '', state = '', country = '';
-            for (const comp of item.address_components) {
-              if (comp.types.includes('locality')) city = comp.long_name;
-              if (!city && (comp.types.includes('sublocality') || comp.types.includes('administrative_area_level_2'))) city = comp.long_name;
-              if (comp.types.includes('administrative_area_level_1')) state = comp.short_name;
-              if (comp.types.includes('country')) country = comp.long_name;
-            }
-
-            this.addrCity = [city, state, country].filter(Boolean).join(', ');
-            this.el.hudAddr.textContent     = this.addrCity || 'Location found';
-            this.el.hudAddrFull.textContent = this.addrFull || 'Precise address unavailable';
-            if (this.el.hudMiniText) {
-              this.el.hudMiniText.textContent = city || this.addrCity || 'Location found';
-            }
-            this.lastGeocoded = { lat, lng };
-            this._scheduleMobileMinimize(5000);
-            return;
-          }
-        } catch (e) {
-          console.warn('Google Geocoder failed, falling back to OSM:', e);
-        }
-      }
-
-      // 2. OpenStreetMap / Nominatim Fallback
+      // Free OpenStreetMap / Nominatim Reverse Geocoding
       try {
-        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
+        const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
         const res  = await fetch(url, { headers: { 'Accept-Language': 'en-US,en' } });
         const json = await res.json();
         const a    = json.address || {};
 
-        // ── Line 1: City, State, Country (No country flags) ──
+        // ── Line 1: City, State, Country ──
         const city    = a.city || a.town || a.village || a.county || '';
         const state   = a.state || '';
         const country = a.country || '';
@@ -1148,32 +1032,10 @@ class LocoCam {
   }
 
   /**
-   * Composites Map tiles (Google Static Maps or CartoDB Voyager / Esri World Imagery) onto ctx.
+   * Composites free Map tiles (CartoDB Voyager / Esri World Imagery) onto ctx.
    */
   async _drawMapTiles(ctx, lat, lng, mx, my, mw, mh, zoom = 17, cornerRadius = 8) {
     const isSat = this.mapLayer === 'satellite';
-
-    // 1. Google Static Maps API for ultra-sharp map burn-in if key is provided
-    if (GOOGLE_MAPS_KEY) {
-      try {
-        const mapType = isSat ? 'hybrid' : 'roadmap';
-        const staticZoom = Math.max(17, zoom);
-        const staticSize = Math.min(320, Math.max(160, Math.round(mw)));
-        const url = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=${staticZoom}&size=${staticSize}x${staticSize}&scale=2&maptype=${mapType}&markers=color:0xea4335%7Csize:mid%7C${lat},${lng}&key=${GOOGLE_MAPS_KEY}`;
-        const img = await this._loadImg(url);
-        if (img) {
-          ctx.save();
-          ctx.beginPath();
-          this._rrect(ctx, mx, my, mw, mh, cornerRadius);
-          ctx.clip();
-          ctx.drawImage(img, mx, my, mw, mh);
-          ctx.restore();
-          return;
-        }
-      } catch (err) {
-        console.warn('Google Static Map fetch failed, falling back to tile renderer:', err);
-      }
-    }
 
     const TS    = 256;
     const scale = Math.pow(2, zoom);
@@ -1245,7 +1107,7 @@ class LocoCam {
     ctx.restore();
   }
 
-  /** Draws a classic Google Maps red teardrop pin (properly proportioned, not elongated) */
+  /** Draws a classic red teardrop map pin (properly proportioned, not elongated) */
   _drawRedPin(ctx, cx, cy, mapW = 100) {
     const r     = Math.max(5.5, Math.round(mapW * 0.065));
     const headY = cy - Math.round(r * 1.55); // center of circle
